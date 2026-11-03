@@ -4,7 +4,14 @@ useHead({ title: 'DealSourcing · Avaliação e aquisição de provedores de int
 
 const pc = usePublicConfig()
 const auth = useAuth()
-onMounted(() => { pc.load(); auth.init() })
+const route = useRoute()
+onMounted(() => {
+  pc.load(); auth.init()
+  // Link de indicação (?ref=CÓDIGO): guarda o código para o cadastro do provedor
+  const ref = String(route.query.ref ?? '').trim().toUpperCase()
+  if (/^[A-Z0-9-]{4,20}$/.test(ref)) { try { localStorage.setItem('ds_ref', ref) } catch { /* ignora */ } refCode.value = ref }
+})
+const refCode = ref('')
 
 const ispOn = computed(() => pc.setting('signup_isp_enabled', true))
 const partnerOn = computed(() => pc.setting('signup_partner_enabled', true))
@@ -43,6 +50,7 @@ const steps = [
       <BrandLogo class="hero-sphere" variant="branca" symbol :height="720" />
       <div class="wrap hero-in">
         <ProductName dark :size="22" class="hero-product" />
+        <div v-if="refCode" class="ref-note"><AppIcon name="handshake" :size="16" /> Você chegou por uma indicação · código <b>{{ refCode }}</b></div>
         <div class="eyebrow light">M&amp;A para provedores regionais de internet</div>
         <h1>Seu provedor tem valor.<br>Descubra o caminho para uma aquisição segura.</h1>
         <p class="lead">O DealSourcing, da NOVALE, conecta proprietários de ISPs a um processo estruturado de avaliação, negociação e aquisição — com sigilo, método e acompanhamento especializado.</p>
@@ -126,6 +134,7 @@ const steps = [
 .brandset { display: flex; align-items: center; gap: .9rem; }
 .brandset .sep { width: 1px; height: 28px; background: var(--line-strong); }
 .hero-product { margin-bottom: 1.4rem; }
+.ref-note { display: inline-flex; align-items: center; gap: .45rem; margin-bottom: 1.2rem; padding: .4rem .8rem; border-radius: 99px; background: rgba(255,255,255,.1); color: #D7DEF3; font-size: .85rem; }
 .ftr-about { font-size: .88rem; color: #9FB0E8; margin: .6rem 0 1.25rem; max-width: 320px; }
 .hdr-in { height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .lnk { color: var(--ink-2); font-size: .9rem; padding: .4rem .6rem; }

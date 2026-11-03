@@ -11,8 +11,13 @@ const groups: { title: string; items: Item[] }[] = [
     { to: '/crm', label: 'Painel', icon: 'dashboard' },
     { to: '/notificacoes', label: 'Notificações', icon: 'bell' },
   ] },
+  { title: 'Comercial', items: [
+    { to: '/crm/provedores', label: 'Provedores', icon: 'building' },
+    { to: '/crm/simulacoes', label: 'Simulações', icon: 'chart', roles: ['admin', 'gestor_comercial'] },
+  ] },
   { title: 'Administração', items: [
     { to: '/crm/usuarios', label: 'Usuários e acessos', icon: 'users', roles: ['admin', 'gestor_comercial'] },
+    { to: '/crm/simulador', label: 'Parâmetros do simulador', icon: 'dashboard', roles: ['admin'] },
     { to: '/crm/configuracoes', label: 'Configurações', icon: 'settings', roles: ['admin'] },
     { to: '/crm/auditoria', label: 'Auditoria', icon: 'history', roles: ['admin'] },
   ] },

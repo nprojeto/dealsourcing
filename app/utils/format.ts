@@ -71,3 +71,39 @@ export function initials(name?: string | null): string {
 export function firstName(name?: string | null): string {
   return (name ?? '').trim().split(/\s+/)[0] ?? ''
 }
+
+const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 })
+export function fmtBRL(v?: number | string | null): string {
+  if (v === null || v === undefined || v === '') return '—'
+  const n = Number(v)
+  return Number.isFinite(n) ? BRL.format(n) : '—'
+}
+
+/** Valor curto para tabelas e indicadores: R$ 3,3 mi · R$ 850 mil */
+export function fmtBRLShort(v?: number | string | null): string {
+  if (v === null || v === undefined || v === '') return '—'
+  const n = Number(v)
+  if (!Number.isFinite(n)) return '—'
+  const abs = Math.abs(n)
+  const f = (x: number) => x.toLocaleString('pt-BR', { maximumFractionDigits: 1 })
+  if (abs >= 1e9) return `R$ ${f(n / 1e9)} bi`
+  if (abs >= 1e6) return `R$ ${f(n / 1e6)} mi`
+  if (abs >= 1e3) return `R$ ${f(n / 1e3)} mil`
+  return fmtBRL(n)
+}
+
+export function fmtPct(fraction?: number | string | null, digits = 2): string {
+  if (fraction === null || fraction === undefined || fraction === '') return '—'
+  const n = Number(fraction) * 100
+  return `${n.toLocaleString('pt-BR', { maximumFractionDigits: digits })}%`
+}
+
+export function fmtInt(v?: number | string | null): string {
+  if (v === null || v === undefined || v === '') return '—'
+  return Number(v).toLocaleString('pt-BR')
+}
+
+export function maskCep(v: string): string {
+  const d = onlyDigits(v).slice(0, 8)
+  return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d
+}
