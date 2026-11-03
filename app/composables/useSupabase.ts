@@ -12,7 +12,7 @@ export function useSupabase(): SupabaseClient {
   if (client) return client
   const cfg = useRuntimeConfig().public
   if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
-    throw new Error('Supabase não configurado: defina NUXT_PUBLIC_SUPABASE_URL e NUXT_PUBLIC_SUPABASE_ANON_KEY.')
+    throw new Error('Supabase não configurado: informe a URL e a chave anon em nuxt.config.ts.')
   }
   client = createClient(String(cfg.supabaseUrl), String(cfg.supabaseAnonKey), {
     auth: {

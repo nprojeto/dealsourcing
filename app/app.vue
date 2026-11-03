@@ -6,8 +6,7 @@ const configured = useSupabaseConfigured()
   <div>
     <div v-if="!configured" class="config-warn" role="alert">
       <AppIcon name="alert" :size="18" />
-      Sistema ainda não conectado ao Supabase. Defina as variáveis <b>NUXT_PUBLIC_SUPABASE_URL</b> e
-      <b>NUXT_PUBLIC_SUPABASE_ANON_KEY</b> no GitHub e publique novamente.
+      Sistema ainda não conectado ao Supabase: falta a chave pública (anon key) no arquivo <b>nuxt.config.ts</b>.
     </div>
     <NuxtLayout>
       <NuxtPage />

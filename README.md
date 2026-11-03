@@ -21,13 +21,9 @@ Backend: **Supabase** (banco, autenticação e Edge Function `api`).
 A publicação é automática a cada envio para a branch `main`
 (arquivo `.github/workflows/deploy.yml`).
 
-Em **Settings → Secrets and variables → Actions → Variables**, criar:
-
-| Variável            | Valor                                        |
-|---------------------|----------------------------------------------|
-| `SUPABASE_URL`      | URL do projeto Supabase                      |
-| `SUPABASE_ANON_KEY` | Chave pública (anon / publishable)           |
-| `BASE_URL`          | Opcional. `/` se usar domínio próprio        |
+O endereço do Supabase (`https://nenexsfeqguwprpwvsfn.supabase.co`) e a chave pública
+ficam em `nuxt.config.ts`. Variáveis no GitHub são opcionais (`SUPABASE_URL`,
+`SUPABASE_ANON_KEY`, `BASE_URL`).
 
 Em **Settings → Pages → Source**, escolher **GitHub Actions**.
 

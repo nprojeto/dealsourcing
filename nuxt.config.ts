@@ -3,6 +3,11 @@
 // em qualquer subpasta sem configurações extras de servidor.
 const baseURL = process.env.NUXT_APP_BASE_URL || '/'
 
+// Projeto Supabase do DealSourcing (valores públicos — podem ficar no código).
+// A chave anon/publishable é pública por definição; segredos ficam só no Supabase.
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://nenexsfeqguwprpwvsfn.supabase.co'
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable_d3oDw2c6aKDpp5cZPdor_w_pDEoZbaX'
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   ssr: false,
@@ -35,10 +40,8 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      // Preenchidos por variáveis de ambiente no build:
-      // NUXT_PUBLIC_SUPABASE_URL e NUXT_PUBLIC_SUPABASE_ANON_KEY
-      supabaseUrl: '',
-      supabaseAnonKey: '',
+      supabaseUrl: SUPABASE_URL,
+      supabaseAnonKey: SUPABASE_ANON_KEY,
     },
   },
   typescript: { strict: true },
