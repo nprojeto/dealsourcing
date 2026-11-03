@@ -1,0 +1,51 @@
+# Publica o frontend no GitHub Pages a cada envio para a branch "main".
+# O endereço do Supabase já está no código (nuxt.config.ts).
+# Variáveis opcionais (Settings → Secrets and variables → Actions → "Variables"),
+# só se quiser trocar os valores sem editar o código:
+#   SUPABASE_URL, SUPABASE_ANON_KEY, BASE_URL ("/" se usar domínio próprio)
+name: Publicar no GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Gerar site estático
+        run: npx nuxt generate
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+          NUXT_APP_BASE_URL: ${{ vars.BASE_URL || format('/{0}/', github.event.repository.name) }}
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .output/public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
