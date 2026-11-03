@@ -11,6 +11,7 @@ const pc = usePublicConfig()
 const tab = ref<'params' | 'legal'>('params')
 
 const CATEGORY_LABEL: Record<string, { t: string; d: string }> = {
+  simulador: { t: 'Simulador — o que o provedor vê', d: 'Controla se o proprietário do ISP enxerga o resultado das próprias simulações.' },
   verificacao: { t: 'Confirmação de e-mail', d: 'Regras dos códigos enviados pela Brevo.' },
   seguranca: { t: 'Segurança', d: 'Proteções contra abuso e política de senha.' },
   cadastro: { t: 'Cadastros públicos', d: 'Quais tipos de cadastro ficam abertos no portal.' },

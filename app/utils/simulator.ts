@@ -13,3 +13,9 @@ export interface SimCriterion {
 }
 export interface SimRegion { code: string; name: string; min_per_client: number; max_per_client: number; states: string[] }
 export interface SimParams { formula: 'additive' | 'multiplicative'; max_total_penalty: number; regions: SimRegion[]; criteria: SimCriterion[] }
+
+/** Resultado exibido ao proprietário do ISP (quando liberado em Configurações). */
+export interface OwnerResultData {
+  value_min: number; value_max: number; total_penalty?: number
+  factors?: { label: string; band: string; penalty: number }[]
+}

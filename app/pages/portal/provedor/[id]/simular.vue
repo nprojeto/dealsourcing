@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { OwnerResultData } from '~/utils/simulator'
 definePageMeta({ layout: 'portal', roles: ['isp_owner'] })
 useHead({ title: 'Simulador · DealSourcing' })
 
@@ -14,6 +15,7 @@ const cfg = ref<FormCfg | null>(null)
 const loading = ref(true)
 const step = ref<'form' | 'done' | 'formalized'>('form')
 const simId = ref('')
+const result = ref<OwnerResultData | null>(null)
 const busy = ref(false)
 const confirmOpen = ref(false)
 
@@ -73,7 +75,7 @@ async function simulate() {
   if (!validate()) { toast.warning('Revise os campos destacados.'); document.querySelector('[aria-invalid="true"]')?.scrollIntoView({ block: 'center', behavior: 'smooth' }); return }
   busy.value = true
   try {
-    const r = await api.post<{ simulation: { id: string } }>(`/isp/companies/${id}/simulations`, {
+    const r = await api.post<{ simulation: { id: string }; result: OwnerResultData | null }>(`/isp/companies/${id}/simulations`, {
       cnpj: onlyDigits(f.cnpj), address: f.address, responsible_name: f.responsible_name, email: f.email,
       phone: onlyDigits(f.phone), client_base: Number(f.client_base), cities: f.cities, region: f.region,
       regularized: f.regularized, poles_valid_pct: Number(f.poles_valid_pct),
@@ -81,6 +83,7 @@ async function simulate() {
       employment_type: f.employment_type, arpu: Number(String(f.arpu).replace(',', '.')),
     })
     simId.value = r.simulation.id
+    result.value = r.result
     step.value = 'done'
     window.scrollTo({ top: 0, behavior: 'smooth' })
   } catch (e) {
@@ -100,7 +103,8 @@ async function formalize() {
 }
 
 function again() {
-  step.value = 'form'; simId.value = ''
+  // Mantém os dados preenchidos para o provedor ajustar o que quiser
+  step.value = 'form'; simId.value = ''; result.value = null
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 </script>
@@ -188,6 +192,25 @@ function again() {
       </form>
     </template>
 
+    <article v-else-if="step === 'done' && result" class="card result with-value">
+      <div class="eyebrow">Resultado da simulação</div>
+      <h1>Quanto vale o {{ isp?.trade_name }}</h1>
+      <OwnerResult :result="result" />
+      <div class="decide">
+        <div class="opt-card">
+          <AppIcon name="handshake" :size="22" />
+          <div><strong>Gostou do resultado?</strong><p class="small muted">Formalize o interesse nesta simulação e nossa equipe entra em contato.</p></div>
+          <button class="btn btn-navy" @click="confirmOpen = true">FORMALIZAR INTERESSE NESTA SIMULAÇÃO</button>
+        </div>
+        <div class="opt-card">
+          <AppIcon name="refresh" :size="22" />
+          <div><strong>Quer ajustar alguma informação?</strong><p class="small muted">Faça uma nova simulação. Os dados atuais ficam preenchidos para você alterar.</p></div>
+          <button class="btn btn-outline" @click="again">Fazer nova simulação</button>
+        </div>
+      </div>
+      <NuxtLink :to="`/portal/provedor/${id}`" class="small">Ver histórico de simulações</NuxtLink>
+    </article>
+
     <article v-else-if="step === 'done'" class="card result">
       <div class="ico"><AppIcon name="check" :size="30" :stroke="2.4" /></div>
       <div class="eyebrow">Simulação registrada</div>
@@ -214,7 +237,7 @@ function again() {
     </article>
 
     <AppModal :open="confirmOpen" title="Formalizar interesse nesta simulação" @close="confirmOpen = false">
-      <p>Ao confirmar, você declara interesse em conversar com a NOVALE sobre uma possível venda do provedor <strong>{{ isp?.trade_name }}</strong>.</p>
+      <p>Ao confirmar, você declara interesse em conversar com a NOVALE sobre uma possível venda do provedor <strong>{{ isp?.trade_name }}</strong><template v-if="result">, com base na estimativa de <strong>{{ fmtBRL(result.value_min) }} a {{ fmtBRL(result.value_max) }}</strong></template>.</p>
       <p class="small muted">Esta manifestação não gera obrigação de venda. Ela apenas libera o contato da nossa equipe comercial.</p>
       <template #footer>
         <button class="btn btn-ghost" @click="confirmOpen = false">Cancelar</button>
@@ -244,4 +267,13 @@ function again() {
 .ico.ok { background: var(--success-bg); color: var(--success); }
 .formal { margin: .75rem 0 1rem; white-space: normal; text-align: center; }
 .row.center { justify-content: center; }
+.result.with-value { text-align: left; }
+.result.with-value > .eyebrow, .result.with-value > h1 { text-align: center; }
+.decide { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0 1rem; }
+.opt-card { display: flex; flex-direction: column; gap: .6rem; padding: 1.1rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--tint); }
+.opt-card > :deep(svg) { color: var(--blue); }
+.opt-card p { margin: .2rem 0 0; }
+.opt-card .btn { margin-top: auto; white-space: normal; text-align: center; }
+.result.with-value > a { display: block; text-align: center; }
+@media (max-width: 700px) { .decide { grid-template-columns: 1fr; } }
 </style>
