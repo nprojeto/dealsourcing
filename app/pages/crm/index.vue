@@ -96,6 +96,8 @@ const hello = computed(() => {
     <template v-if="auth.isManager.value">
       <div v-if="loading && !stats" class="empty"><span class="spinner" /></div>
       <template v-else-if="stats">
+        <div class="row between" style="margin-bottom:.6rem"><div class="eyebrow" style="margin:0">Números gerais</div>
+          <NuxtLink to="/crm/relatorios" class="small">Painel gerencial com filtros e relatórios →</NuxtLink></div>
         <div v-if="stats.crm" class="grid-4 crm-kpis">
           <NuxtLink to="/crm/provedores" class="card kpi link"><div class="kpi-label">Provedores cadastrados</div><div class="kpi-value">{{ stats.crm.isps }}</div><div class="kpi-foot">{{ stats.crm.isps_7d }} nos últimos 7 dias</div></NuxtLink>
           <NuxtLink to="/crm/simulacoes" class="card kpi link"><div class="kpi-label">Simulações realizadas</div><div class="kpi-value">{{ stats.crm.simulations }}</div><div class="kpi-foot">{{ stats.crm.simulations_7d }} nos últimos 7 dias</div></NuxtLink>

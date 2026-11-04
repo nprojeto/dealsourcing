@@ -6,7 +6,14 @@ Frontend em **Nuxt 4 + Vue 3 + TypeScript**, com identidade visual NOVALE
 (marinho `#0D2B5E`, azul `#14268A`, fundo `#F7F9FD`, bordas `#D8DEEC`).
 Backend: **Supabase** (banco, autenticação e Edge Function `api`).
 
-## Fases entregues: 1 a 6 (Fundação, Simulador, Equipe e parceiros, CRM e funil, Reuniões, Comissões)
+## Fases entregues: 1 a 7 (Fundação, Simulador, Equipe e parceiros, CRM e funil, Reuniões, Comissões, Painel e relatórios)
+
+**Fase 7:** Painel gerencial (admin e gestores) com indicadores de captação, atendimento e resultado,
+pipeline estimado, evolução mensal/semanal, funil com taxa de conversão entre etapas, distribuição por
+região, estado e origem, motivos de perda, desempenho da equipe e dos parceiros; filtros por período,
+região, estado, cidade, responsável, indicação, etapa e origem (guardados no endereço da página);
+exportação de oportunidades, provedores, simulações, reuniões e comissões em CSV (abre no Excel),
+com registro na auditoria.
 
 **Fase 6:** regras de comissão (parceiros por indicação, equipe por indicação ou atendimento;
 percentual, valor fixo e teto; etapa que gera; base de cálculo; prazo e vigência), geração automática
