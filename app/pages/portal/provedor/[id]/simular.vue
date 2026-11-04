@@ -196,6 +196,7 @@ function again() {
       <div class="eyebrow">Resultado da simulação</div>
       <h1>Quanto vale o {{ isp?.trade_name }}</h1>
       <OwnerResult :result="result" />
+      <p class="small muted center-txt">Valores calculados com base nas informações desta simulação. A avaliação definitiva depende da análise da equipe NOVALE.</p>
       <div class="decide">
         <div class="opt-card">
           <AppIcon name="handshake" :size="22" />
@@ -269,6 +270,7 @@ function again() {
 .row.center { justify-content: center; }
 .result.with-value { text-align: left; }
 .result.with-value > .eyebrow, .result.with-value > h1 { text-align: center; }
+.center-txt { text-align: center; margin: .9rem 0 0; }
 .decide { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0 1rem; }
 .opt-card { display: flex; flex-direction: column; gap: .6rem; padding: 1.1rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--tint); }
 .opt-card > :deep(svg) { color: var(--blue); }

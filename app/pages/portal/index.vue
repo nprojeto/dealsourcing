@@ -67,7 +67,10 @@ const contactPhone = computed(() => String(pc.setting('contact_phone', '')))
     </template>
 
     <div class="grid-2 cols">
-      <ReferralCard v-if="!isIsp" />
+      <div v-if="!isIsp" class="stack">
+        <ReferralCard />
+        <NuxtLink to="/portal/desempenho" class="btn btn-navy btn-block"><AppIcon name="chart" :size="18" /> Acompanhar minhas indicações</NuxtLink>
+      </div>
       <article class="card">
         <div class="card-head"><h2>Meus dados</h2><NuxtLink to="/minha-conta" class="btn btn-outline btn-sm">Editar</NuxtLink></div>
         <div class="card-body">

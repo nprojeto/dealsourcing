@@ -16,6 +16,19 @@ export interface SimParams { formula: 'additive' | 'multiplicative'; max_total_p
 
 /** Resultado exibido ao proprietário do ISP (quando liberado em Configurações). */
 export interface OwnerResultData {
-  value_min: number; value_max: number; total_penalty?: number
-  factors?: { label: string; band: string; penalty: number }[]
+  value_min: number; value_max: number
+}
+
+// ----- Fase 3: desempenho (sem valores financeiros) -----
+export interface Performance {
+  isps: number; isps_simulated: number; simulations: number; isps_formalized: number; formalizations: number
+  opportunities_open: number; acquisitions: number; lost: number; assigned_open: number; last_activity: string | null
+  monthly: { month: string; isps: number; simulations: number; formalizations: number }[]
+}
+export interface ReferredIsp {
+  id: string; trade_name: string; city: string; state: string; status: string; created_at: string
+  simulations: number; formalized: boolean; last_simulation_at: string | null; stage: string | null; won: boolean; lost: boolean
+}
+export interface PerformancePayload {
+  performance: Performance; isps: ReferredIsp[]; code: string | null; owner_type: string | null; link: string | null
 }

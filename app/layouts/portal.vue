@@ -3,11 +3,12 @@ const { profile, signOut } = useAuth()
 const menuOpen = ref(false)
 const route = useRoute()
 watch(() => route.fullPath, () => { menuOpen.value = false })
-const links = [
+const links = computed(() => [
   { to: '/portal', label: 'Início', icon: 'home' },
+  ...(profile.value?.role === 'parceiro' ? [{ to: '/portal/desempenho', label: 'Minhas indicações', icon: 'chart' }] : []),
   { to: '/notificacoes', label: 'Notificações', icon: 'bell' },
   { to: '/minha-conta', label: 'Minha conta', icon: 'user' },
-]
+])
 </script>
 
 <template>

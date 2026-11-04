@@ -41,7 +41,7 @@ onMounted(() => { load(); if (route.query.id) openDetail(String(route.query.id))
 watch(() => route.query.id, (id) => { if (id) openDetail(String(id)) })
 
 // ---------- Detalhe ----------
-const detail = ref<{ profile: Profile; consents: Consent[]; history: HistoryItem[] } | null>(null)
+const detail = ref<{ profile: Profile; consents: Consent[]; history: HistoryItem[]; referral_code: string | null } | null>(null)
 const detailOpen = ref(false)
 const detailLoading = ref(false)
 async function openDetail(id: string) {
@@ -223,6 +223,11 @@ function describeChange(h: HistoryItem): string {
             <dt>E-mail confirmado</dt><dd>{{ fmtDateTime(detail.profile.email_verified_at) }}</dd>
             <dt>Aprovado em</dt><dd>{{ fmtDateTime(detail.profile.approved_at) }}</dd>
             <dt>Último acesso</dt><dd>{{ fmtDateTime(detail.profile.last_login_at) }}</dd>
+            <template v-if="detail.profile.role && detail.profile.role !== 'isp_owner'">
+              <dt>Código de indicação</dt>
+              <dd><span v-if="detail.referral_code" class="mono">{{ detail.referral_code }}</span><span v-else class="muted">Gerado quando a conta estiver ativa</span>
+                · <NuxtLink :to="`/crm/equipe?id=${detail.profile.id}${detail.profile.role === 'parceiro' ? '&tipo=parceiros' : ''}`">ver desempenho</NuxtLink></dd>
+            </template>
           </dl>
         </section>
 

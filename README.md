@@ -6,7 +6,11 @@ Frontend em **Nuxt 4 + Vue 3 + TypeScript**, com identidade visual NOVALE
 (marinho `#0D2B5E`, azul `#14268A`, fundo `#F7F9FD`, bordas `#D8DEEC`).
 Backend: **Supabase** (banco, autenticação e Edge Function `api`).
 
-## Fases entregues: 1 — Fundação · 2 — Simulador
+## Fases entregues: 1 — Fundação · 2 — Simulador · 3 — Equipe e parceiros
+
+**Fase 3:** painéis individuais (Meu desempenho no CRM e Minhas indicações no portal do parceiro),
+tela Equipe e parceiros para gestores, alteração de código e correção de indicação com
+justificativa e auditoria. O provedor vê apenas a faixa de valor da simulação.
 
 **Fase 2:** cadastro do provedor (CNPJ e e-mail únicos, CEP automático), código de indicação
 (gerado para equipe e parceiros, com link que preenche o código), simulador com 13 campos e

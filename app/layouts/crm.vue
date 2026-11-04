@@ -9,11 +9,13 @@ interface Item { to: string; label: string; icon: string; roles?: Role[] }
 const groups: { title: string; items: Item[] }[] = [
   { title: 'Visão geral', items: [
     { to: '/crm', label: 'Painel', icon: 'dashboard' },
+    { to: '/crm/desempenho', label: 'Meu desempenho', icon: 'chart' },
     { to: '/notificacoes', label: 'Notificações', icon: 'bell' },
   ] },
   { title: 'Comercial', items: [
     { to: '/crm/provedores', label: 'Provedores', icon: 'building' },
-    { to: '/crm/simulacoes', label: 'Simulações', icon: 'chart', roles: ['admin', 'gestor_comercial'] },
+    { to: '/crm/simulacoes', label: 'Simulações', icon: 'file', roles: ['admin', 'gestor_comercial'] },
+    { to: '/crm/equipe', label: 'Equipe e parceiros', icon: 'handshake', roles: ['admin', 'gestor_comercial'] },
   ] },
   { title: 'Administração', items: [
     { to: '/crm/usuarios', label: 'Usuários e acessos', icon: 'users', roles: ['admin', 'gestor_comercial'] },

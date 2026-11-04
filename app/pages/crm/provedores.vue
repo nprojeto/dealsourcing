@@ -55,7 +55,20 @@ async function open(id: string) {
   try { detail.value = await api.get<Detail>(`/crm/isps/${id}`); expanded.value = detail.value.simulations[0]?.id ?? null }
   catch (e) { toast.error(errorMessage(e)); detailOpen.value = false } finally { detailLoading.value = false }
 }
-function close() { detailOpen.value = false; if (route.query.id) router.replace({ query: { ...route.query, id: undefined } }) }
+const refForm = reactive({ open: false, code: '', reason: '', busy: false, error: '' })
+async function reassign() {
+  refForm.error = ''
+  if (refForm.reason.trim().length < 5) { refForm.error = 'Informe a justificativa (mínimo de 5 caracteres).'; return }
+  refForm.busy = true
+  try {
+    const id = detail.value!.isp.id
+    await api.post(`/crm/isps/${id}/referral`, { code: refForm.code.trim(), reason: refForm.reason.trim() })
+    toast.success('Indicação corrigida e registrada na auditoria.')
+    Object.assign(refForm, { open: false, code: '', reason: '' })
+    await Promise.all([open(id), load()])
+  } catch (e) { refForm.error = errorMessage(e) } finally { refForm.busy = false }
+}
+function close() { refForm.open = false; detailOpen.value = false; if (route.query.id) router.replace({ query: { ...route.query, id: undefined } }) }
 </script>
 
 <template>
@@ -142,6 +155,22 @@ function close() { detailOpen.value = false; if (route.query.id) router.replace(
               <dt>Formalizações</dt><dd>{{ detail.opportunity.formalizations_count }}</dd>
             </template>
           </dl>
+          <button v-if="auth.isAdmin.value && !refForm.open" class="btn btn-outline btn-sm" style="margin-top:.75rem" @click="refForm.open = true">
+            <AppIcon name="refresh" :size="16" /> Corrigir indicação</button>
+          <div v-if="refForm.open" class="ref-form stack">
+            <div class="form-grid">
+              <div class="field"><label for="rc">Código correto</label>
+                <input id="rc" v-model="refForm.code" class="input" maxlength="20" placeholder="Em branco = sem indicação" @input="refForm.code = refForm.code.toUpperCase()"></div>
+              <div class="field"><label for="rr">Justificativa<span class="req">*</span></label>
+                <input id="rr" v-model="refForm.reason" class="input" maxlength="500" placeholder="Ex.: indicação comprovada por e-mail"></div>
+            </div>
+            <p class="small muted" style="margin:0">A correção vale para o provedor, as simulações e a oportunidade. O responsável anterior e o novo são avisados.</p>
+            <div v-if="refForm.error" class="alert danger small"><AppIcon name="alert" :size="18" /> {{ refForm.error }}</div>
+            <div class="row end">
+              <button class="btn btn-ghost btn-sm" @click="refForm.open = false">Cancelar</button>
+              <button class="btn btn-sm" :disabled="refForm.busy" @click="reassign"><span v-if="refForm.busy" class="spinner" /> Salvar correção</button>
+            </div>
+          </div>
         </section>
 
         <section>
@@ -196,6 +225,7 @@ function close() { detailOpen.value = false; if (route.query.id) router.replace(
 .f-search :deep(svg) { position: absolute; left: .8rem; top: 50%; transform: translateY(-50%); color: var(--muted); }
 .f-search .input { padding-left: 2.4rem; }
 .money { color: var(--navy); font-weight: 700; }
+.ref-form { margin-top: .9rem; padding-top: .9rem; border-top: 1px solid var(--line); }
 .box { border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem; background: var(--tint); }
 .sim { border: 1px solid var(--line); border-radius: var(--radius); margin-top: .5rem; overflow: hidden; }
 .sim.open { border-color: var(--line-strong); box-shadow: var(--shadow-sm); }
