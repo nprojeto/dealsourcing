@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Assignee, MeetingItem, OppItem, SimResult, Stage } from '~/utils/simulator'
+interface OppCommission { id: string; status: string; amount: number | null; paid_amount: number; beneficiary_type: string; rule_snapshot: { name?: string }; beneficiary: { full_name: string } | null }
 
 interface Activity { id: string; kind: string; outcome: string | null; event: string | null; description: string | null; occurred_at: string; user: { full_name: string } | null; data: Record<string, unknown> }
 interface Attachment { id: string; file_name: string; mime_type: string; size_bytes: number; created_at: string; uploaded_by: string; uploader: { full_name: string } | null }
@@ -8,7 +9,7 @@ interface Detail {
   opportunity: OppItem; isp: Record<string, unknown> & { owner?: { full_name: string; email: string; phone: string | null } | null } | null
   simulations: Sim[]; formalizations: { id: string; simulation_id: string; formalized_at: string }[]
   activities: Activity[]; attachments: Attachment[]; contact_stats: { total: number; unanswered: number }
-  can_edit: boolean; can_assign: boolean
+  can_edit: boolean; can_assign: boolean; commissions: OppCommission[]
 }
 
 const props = defineProps<{ id: string | null; stages: Stage[]; assignees: Assignee[] }>()
@@ -42,19 +43,19 @@ async function refresh() { await load(true); emit('changed') }
 
 // ----- etapa -----
 const activeStages = computed(() => props.stages.filter((s) => s.active).sort((a, b) => a.position - b.position))
-const move = reactive({ to: '', note: '', open: false })
+const move = reactive({ to: '', note: '', open: false, deal: null as number | null })
 const target = computed(() => props.stages.find((s) => s.key === move.to))
 function askMove(key: string) {
   if (!o.value || key === o.value.stage_key) return
   const st = props.stages.find((s) => s.key === key)
-  move.to = key; move.note = ''
-  if (st?.requires_note || st?.is_lost) move.open = true
+  move.to = key; move.note = ''; move.deal = o.value.deal_value ?? null
+  if (st?.requires_note || st?.is_lost || st?.is_won) move.open = true
   else doMove()
 }
 async function doMove() {
   busy.value = 'move'
   try {
-    const r = await api.post<{ to: string }>(`/crm/opportunities/${o.value!.id}/move`, { stage_key: move.to, note: move.note })
+    const r = await api.post<{ to: string }>(`/crm/opportunities/${o.value!.id}/move`, { stage_key: move.to, note: move.note, deal_value: target.value?.is_won ? move.deal : undefined })
     toast.success(`Movida para "${r.to}".`); move.open = false; await refresh()
   } catch (e) { toast.error(errorMessage(e)) } finally { busy.value = '' }
 }
@@ -68,6 +69,13 @@ async function doAssign() {
     toast.success(assign.user ? 'Responsável definido.' : 'Oportunidade devolvida para a fila.'); assign.open = false; await refresh()
   } catch (e) { toast.error(errorMessage(e)) } finally { busy.value = '' }
 }
+const deal = ref<number | null>(null)
+async function saveDeal() {
+  busy.value = 'deal'
+  try { await api.patch(`/crm/opportunities/${o.value!.id}`, { deal_value: deal.value }); toast.success('Valor do negócio salvo. Comissões ainda não aprovadas foram recalculadas.'); await refresh() }
+  catch (e) { toast.error(errorMessage(e)) } finally { busy.value = '' }
+}
+const moveOk = computed(() => (target.value?.is_won ? (move.deal ?? 0) > 0 : true) && (!(target.value?.requires_note || target.value?.is_lost) || move.note.trim().length >= 3))
 async function setPriority(p: string) {
   try { await api.patch(`/crm/opportunities/${o.value!.id}`, { priority: p }); toast.success('Prioridade atualizada.'); await refresh() }
   catch (e) { toast.error(errorMessage(e)) }
@@ -83,6 +91,7 @@ function syncForms() {
     prospect_contact: x.prospect_contact ?? '', prospect_phone: maskPhone(x.prospect_phone ?? ''), prospect_email: x.prospect_email ?? '',
     client_base_estimate: x.client_base_estimate ?? '',
   })
+  deal.value = x.deal_value ?? null
 }
 async function saveSummary() {
   busy.value = 'summary'
@@ -221,6 +230,26 @@ const formalizedIds = computed(() => new Set((d.value?.formalizations ?? []).map
           </div>
         </section>
 
+        <section v-if="d.can_assign || o.deal_value" class="box stack">
+          <div class="eyebrow">Negócio e comissões</div>
+          <div class="row" style="align-items:flex-end">
+            <div class="field" style="flex:1;min-width:200px"><label for="dv">Valor do negócio fechado</label>
+              <MoneyInput id="dv" v-model="deal" :disabled="!d.can_assign" />
+              <span class="hint">{{ o.deal_value_set_at ? `Informado em ${fmtDateTime(o.deal_value_set_at)}` : 'Base das comissões calculadas sobre o valor do negócio.' }}</span></div>
+            <button v-if="d.can_assign" class="btn btn-outline btn-sm" style="margin-bottom:1.35rem" :disabled="busy === 'deal' || deal === (o.deal_value ?? null)" @click="saveDeal">Salvar valor</button>
+          </div>
+          <ul v-if="d.commissions.length" class="files">
+            <li v-for="c in d.commissions" :key="c.id">
+              <AppIcon name="wallet" :size="18" />
+              <div class="grow"><NuxtLink :to="`/crm/comissoes?id=${c.id}`" class="link-btn">{{ c.beneficiary?.full_name }}</NuxtLink>
+                <div class="small muted">{{ BENEFICIARY_TYPE_LABEL[c.beneficiary_type] }} · {{ c.rule_snapshot?.name }}</div></div>
+              <strong class="small">{{ c.amount === null ? 'A definir' : fmtBRL(c.amount) }}</strong>
+              <span class="badge" :class="COMMISSION_STATUS_TONE[c.status]">{{ COMMISSION_STATUS_LABEL[c.status] }}</span>
+            </li>
+          </ul>
+          <p v-else-if="d.can_assign" class="small muted" style="margin:0">As comissões são geradas quando a oportunidade chega à etapa definida nas regras (por padrão, a conclusão da aquisição).</p>
+        </section>
+
         <section>
           <div class="field"><label for="obs" class="eyebrow">Observações</label>
             <textarea id="obs" v-model="f.notes" class="textarea" rows="4" :disabled="!d.can_edit" placeholder="Informações importantes sobre a negociação" /></div>
@@ -310,11 +339,17 @@ const formalizedIds = computed(() => new Set((d.value?.formalizations ?? []).map
   </AppModal>
 
   <AppModal :open="move.open" :title="`Mover para “${target?.name ?? ''}”`" @close="move.open = false">
-    <div class="field"><label for="mn">{{ target?.is_lost ? 'Motivo da perda' : 'Observação' }}<span class="req">*</span></label>
-      <textarea id="mn" v-model="move.note" class="textarea" rows="3" style="min-height:80px" /></div>
+    <div class="stack">
+      <template v-if="target?.is_won">
+        <div class="field"><label for="mdv">Valor do negócio fechado<span class="req">*</span></label><MoneyInput id="mdv" v-model="move.deal" />
+          <span class="hint">Usado no cálculo das comissões. Pode ser corrigido depois, enquanto as comissões não forem aprovadas.</span></div>
+      </template>
+      <div class="field"><label for="mn">{{ target?.is_lost ? 'Motivo da perda' : 'Observação' }}<span v-if="target?.requires_note || target?.is_lost" class="req">*</span></label>
+        <textarea id="mn" v-model="move.note" class="textarea" rows="3" style="min-height:80px" /></div>
+    </div>
     <template #footer>
       <button class="btn btn-ghost" @click="move.open = false">Cancelar</button>
-      <button class="btn" :class="{ 'btn-danger': target?.is_lost }" :disabled="busy === 'move' || move.note.trim().length < 3" @click="doMove"><span v-if="busy === 'move'" class="spinner" /> Confirmar</button>
+      <button class="btn" :class="{ 'btn-danger': target?.is_lost }" :disabled="busy === 'move' || !moveOk" @click="doMove"><span v-if="busy === 'move'" class="spinner" /> Confirmar</button>
     </template>
   </AppModal>
 

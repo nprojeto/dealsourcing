@@ -125,3 +125,16 @@ export const MEETING_STATUS_TONE: Record<string, string> = {
 }
 export const MEETING_MODE_LABEL: Record<string, string> = { online: 'Online', presencial: 'Presencial', telefone: 'Telefone' }
 export const MEETING_MODE_ICON: Record<string, string> = { online: 'video', presencial: 'map-pin', telefone: 'phone' }
+
+// ----- Fase 6: comissões -----
+export const COMMISSION_STATUS_LABEL: Record<string, string> = { gerada: 'Gerada', aprovada: 'Aprovada', paga: 'Paga', cancelada: 'Cancelada' }
+export const COMMISSION_STATUS_TONE: Record<string, string> = { gerada: 'info', aprovada: 'warning', paga: 'success', cancelada: 'plain' }
+export const COMMISSION_BASE_LABEL: Record<string, string> = {
+  deal_value: 'Valor do negócio fechado', estimate_min: 'Estimativa mínima', estimate_avg: 'Estimativa média', estimate_max: 'Estimativa máxima',
+}
+export const BENEFICIARY_TYPE_LABEL: Record<string, string> = { internal: 'Equipe interna', external: 'Parceiro' }
+export const COMMISSION_SOURCE_LABEL: Record<string, string> = { referral: 'Dono da indicação', assignee: 'Responsável pelo atendimento' }
+export const PAY_METHOD_LABEL: Record<string, string> = { pix: 'Pix', transferencia: 'Transferência', boleto: 'Boleto', folha: 'Folha de pagamento', outro: 'Outro' }
+export const REFERRAL_ORIGIN_LABEL: Record<string, string> = {
+  any: 'Qualquer origem', external: 'Indicados por parceiro externo', internal: 'Indicados pela equipe interna', none: 'Cadastrados sem código de indicação',
+}

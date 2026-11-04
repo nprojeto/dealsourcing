@@ -61,12 +61,13 @@ const columns = computed(() => stages.value
 const canEdit = (o: OppItem) => auth.isManager.value || o.assigned_to === auth.profile.value?.id || (o.created_by === auth.profile.value?.id && !o.assigned_to)
 const dragging = ref<OppItem | null>(null)
 const over = ref('')
-const pendingMove = reactive({ opp: null as OppItem | null, stage: null as Stage | null, note: '', busy: false })
+const pendingMove = reactive({ opp: null as OppItem | null, stage: null as Stage | null, note: '', deal: null as number | null, busy: false })
+const pendingOk = computed(() => (pendingMove.stage?.is_won ? (pendingMove.deal ?? 0) > 0 : true) && (!(pendingMove.stage?.requires_note || pendingMove.stage?.is_lost) || pendingMove.note.trim().length >= 3))
 function onDrop(stage: Stage) {
   over.value = ''
   const o = dragging.value; dragging.value = null
   if (!o || o.stage_key === stage.key) return
-  if (stage.requires_note || stage.is_lost) { Object.assign(pendingMove, { opp: o, stage, note: '' }); return }
+  if (stage.requires_note || stage.is_lost || stage.is_won) { Object.assign(pendingMove, { opp: o, stage, note: '', deal: o.deal_value ?? null }); return }
   doMove(o, stage, '')
 }
 async function doMove(o: OppItem, stage: Stage, note: string) {
@@ -74,7 +75,7 @@ async function doMove(o: OppItem, stage: Stage, note: string) {
   const prev = o.stage_key
   o.stage_key = stage.key
   try {
-    await api.post(`/crm/opportunities/${o.id}/move`, { stage_key: stage.key, note })
+    await api.post(`/crm/opportunities/${o.id}/move`, { stage_key: stage.key, note, deal_value: stage.is_won ? pendingMove.deal : undefined })
     toast.success(`${o.name} → ${stage.name}`)
     pendingMove.opp = null
     await load()
@@ -239,11 +240,15 @@ const chips = computed(() => [
     <OpportunityDrawer :id="openId" :stages="stages" :assignees="assignees" @close="closeOpp" @changed="onChanged" />
 
     <AppModal :open="!!pendingMove.opp" :title="`Mover para “${pendingMove.stage?.name ?? ''}”`" @close="pendingMove.opp = null">
-      <div class="field"><label for="pmn">{{ pendingMove.stage?.is_lost ? 'Motivo da perda' : 'Observação' }}<span class="req">*</span></label>
-        <textarea id="pmn" v-model="pendingMove.note" class="textarea" rows="3" style="min-height:80px" /></div>
+      <div class="stack">
+        <div v-if="pendingMove.stage?.is_won" class="field"><label for="pmdv">Valor do negócio fechado<span class="req">*</span></label><MoneyInput id="pmdv" v-model="pendingMove.deal" />
+          <span class="hint">Usado no cálculo das comissões.</span></div>
+        <div class="field"><label for="pmn">{{ pendingMove.stage?.is_lost ? 'Motivo da perda' : 'Observação' }}<span v-if="pendingMove.stage?.requires_note || pendingMove.stage?.is_lost" class="req">*</span></label>
+          <textarea id="pmn" v-model="pendingMove.note" class="textarea" rows="3" style="min-height:80px" /></div>
+      </div>
       <template #footer>
         <button class="btn btn-ghost" @click="pendingMove.opp = null">Cancelar</button>
-        <button class="btn" :class="{ 'btn-danger': pendingMove.stage?.is_lost }" :disabled="pendingMove.busy || pendingMove.note.trim().length < 3" @click="doMove(pendingMove.opp!, pendingMove.stage!, pendingMove.note)">Confirmar</button>
+        <button class="btn" :class="{ 'btn-danger': pendingMove.stage?.is_lost }" :disabled="pendingMove.busy || !pendingOk" @click="doMove(pendingMove.opp!, pendingMove.stage!, pendingMove.note)">Confirmar</button>
       </template>
     </AppModal>
 

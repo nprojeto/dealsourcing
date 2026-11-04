@@ -5,7 +5,7 @@ const route = useRoute()
 watch(() => route.fullPath, () => { menuOpen.value = false })
 const links = computed(() => [
   { to: '/portal', label: 'Início', icon: 'home' },
-  ...(profile.value?.role === 'parceiro' ? [{ to: '/portal/desempenho', label: 'Minhas indicações', icon: 'chart' }] : []),
+  ...(profile.value?.role === 'parceiro' ? [{ to: '/portal/desempenho', label: 'Minhas indicações', icon: 'chart' }, { to: '/portal/comissoes', label: 'Comissões', icon: 'wallet' }] : []),
   { to: '/notificacoes', label: 'Notificações', icon: 'bell' },
   { to: '/minha-conta', label: 'Minha conta', icon: 'user' },
 ])
@@ -50,7 +50,7 @@ const links = computed(() => [
 .logo { display: inline-flex; align-items: center; gap: .75rem; text-decoration: none; flex: none; }
 .logo .sep { width: 1px; height: 22px; background: rgba(255,255,255,.25); }
 .nav { display: flex; gap: .25rem; flex: 1; }
-.nav-link { display: inline-flex; align-items: center; gap: .45rem; padding: .5rem .8rem; border-radius: var(--radius); color: #C9D3F0; font: 500 .9rem var(--font-body); background: none; border: 0; cursor: pointer; text-decoration: none; }
+.nav-link { display: inline-flex; align-items: center; gap: .45rem; padding: .5rem .8rem; border-radius: var(--radius); color: #C9D3F0; font: 500 .9rem var(--font-body); background: none; border: 0; cursor: pointer; text-decoration: none; white-space: nowrap; }
 .nav-link:hover { color: #fff; background: rgba(255,255,255,.08); text-decoration: none; }
 .nav-link.active { color: #fff; background: rgba(255,255,255,.12); }
 .right { display: flex; align-items: center; gap: .75rem; margin-left: auto; }

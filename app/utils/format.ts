@@ -138,3 +138,13 @@ export function fmtDue(iso?: string | null): string {
 
 /** Primeira letra maiúscula (sem afetar preposições: "novembro de 2026" → "Novembro de 2026") */
 export function capFirst(s: string): string { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s }
+
+/** Data sem horário (AAAA-MM-DD) → DD/MM/AAAA, sem deslocamento de fuso. */
+export function fmtDay(v?: string | null): string {
+  if (!v) return '—'
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v)
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : fmtDate(v)
+}
+export function todayISO(): string {
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' })
+}

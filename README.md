@@ -6,7 +6,15 @@ Frontend em **Nuxt 4 + Vue 3 + TypeScript**, com identidade visual NOVALE
 (marinho `#0D2B5E`, azul `#14268A`, fundo `#F7F9FD`, bordas `#D8DEEC`).
 Backend: **Supabase** (banco, autenticação e Edge Function `api`).
 
-## Fases entregues: 1 a 5 (Fundação, Simulador, Equipe e parceiros, CRM e funil, Reuniões)
+## Fases entregues: 1 a 6 (Fundação, Simulador, Equipe e parceiros, CRM e funil, Reuniões, Comissões)
+
+**Fase 6:** regras de comissão (parceiros por indicação, equipe por indicação ou atendimento;
+percentual, valor fixo e teto; etapa que gera; base de cálculo; prazo e vigência), geração automática
+somente quando a oportunidade chega à etapa da regra (simular ou formalizar não gera), valor do negócio
+fechado obrigatório na conclusão, filtro por origem da indicação nas regras de atendimento (ex.: bônus
+para a equipe que atende indicações de parceiros externos), aprovação, ajuste com motivo, cancelamento, reabertura, pagamentos
+parciais, previsão das oportunidades em aberto, histórico, tela Comissões no CRM e no portal do parceiro
+(sem valor-base nem percentuais).
 
 **Fase 5:** agenda (mês e lista), agendamento com participantes, link ou endereço, 7 status,
 resultado e próximos passos, integração com o funil, lembretes, aviso de conflito de horário,

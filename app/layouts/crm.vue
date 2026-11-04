@@ -17,6 +17,7 @@ const groups: { title: string; items: Item[] }[] = [
     { to: '/crm/oportunidades', label: 'Funil comercial', icon: 'briefcase' },
     { to: '/crm/provedores', label: 'Provedores', icon: 'building' },
     { to: '/crm/simulacoes', label: 'Simulações', icon: 'file', roles: ['admin', 'gestor_comercial'] },
+    { to: '/crm/comissoes', label: 'Comissões', icon: 'wallet' },
     { to: '/crm/equipe', label: 'Equipe e parceiros', icon: 'handshake', roles: ['admin', 'gestor_comercial'] },
   ] },
   { title: 'Administração', items: [

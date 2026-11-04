@@ -50,6 +50,7 @@ export interface OppItem {
   prospect_contact: string | null; prospect_phone: string | null; prospect_email: string | null; client_base_estimate: number | null
   open: boolean; overdue: boolean; stale: boolean; days_in_stage: number; days_idle: number; created_at: string
   isp: { trade_name: string; legal_name: string; cnpj: string; city: string; state: string; phone: string; email: string; responsible_name: string; referral_code: string | null } | null
+  deal_value?: number | null; deal_value_set_at?: string | null
 }
 export interface Assignee { id: string; full_name: string; email: string; role: string; open: number }
 
@@ -61,4 +62,33 @@ export interface MeetingItem {
   outcome: string | null; next_steps: string | null; cancel_reason: string | null; visible_to_isp: boolean; created_at: string
   organizer: { id: string; full_name: string; email: string; phone: string | null } | null
   participants: MeetingParticipant[]; opp_name: string; city: string | null; state: string | null; result_pending: boolean
+}
+
+// ----- Fase 6: comissões -----
+export interface CommissionItem {
+  id: string; opportunity_id: string; status: string; amount: number | null; paid_amount: number; balance: number | null
+  beneficiary_id: string; beneficiary_type: string; source?: string; base?: string; base_value?: number | null
+  generated_at: string; due_date: string | null; approved_at: string | null; cancelled_at: string | null; cancel_reason: string | null
+  adjust_reason?: string | null; notes?: string | null; paid_at: string | null; overdue: boolean; opp_name: string
+  rule_snapshot: { name?: string; percent?: number | null; fixed_amount?: number | null; max_amount?: number | null; payment_terms?: string | null; payment_days?: number }
+  beneficiary: { id: string; full_name: string; email: string } | null; approver: { full_name: string } | null
+  opp: { id: string; prospect_name: string | null; stage_key?: string; isp: { trade_name: string; city: string; state: string } | null } | null
+}
+export interface ForecastItem {
+  opportunity_id: string; opp_name: string; stage: string; trigger: string; rule_id: string; rule_name: string
+  beneficiary_id: string; beneficiary_name: string; beneficiary_type: string; base_value: number | null; estimated: boolean; amount: number | null
+}
+export interface CommissionSummary {
+  gerada: { n: number; total: number }; aprovada: { n: number; total: number }; paga: { n: number; total: number }; cancelada: { n: number; total: number }
+  pendente: { n: number; total: number }; prevista: { n: number; total: number }; paid_total: number; overdue: number
+}
+export interface CommissionRule {
+  id: string; name: string; beneficiary_type: string; source: string; role: string | null; trigger_stage: string; base: string
+  percent: number | null; fixed_amount: number | null; max_amount: number | null; payment_days: number; payment_terms: string | null
+  valid_from: string | null; valid_to: string | null; active: boolean; commissions: number; trigger: { name: string } | null; referral_origin: string
+}
+export interface CommissionPayment {
+  id: string; amount: number; paid_at: string; method: string; reference: string | null; notes?: string | null; created_at: string
+  author?: { full_name: string } | null
+  commission?: { id: string; beneficiary_type: string; beneficiary: { full_name: string } | null; opp: { prospect_name: string | null; isp: { trade_name: string } | null } | null }
 }
