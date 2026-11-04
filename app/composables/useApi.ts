@@ -16,7 +16,7 @@ export function useApi() {
   const cfg = useRuntimeConfig().public
 
   async function request<T = unknown>(method: Method, path: string, body?: unknown,
-    query?: Record<string, string | number | undefined | null>): Promise<T> {
+    query?: Record<string, string | number | undefined | null>, form?: FormData): Promise<T> {
     const base = `${String(cfg.supabaseUrl).replace(/\/+$/, '')}/functions/v1/api`
     const qs = query
       ? '?' + new URLSearchParams(Object.entries(query)
@@ -24,9 +24,9 @@ export function useApi() {
         .map(([k, v]) => [k, String(v)])).toString()
       : ''
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
       apikey: String(cfg.supabaseAnonKey),
     }
+    if (!form) headers['Content-Type'] = 'application/json'
     try {
       const { data } = await useSupabase().auth.getSession()
       if (data.session?.access_token) headers.Authorization = `Bearer ${data.session.access_token}`
@@ -35,7 +35,7 @@ export function useApi() {
     let res: Response
     try {
       res = await fetch(base + path + (qs === '?' ? '' : qs), {
-        method, headers, body: body === undefined ? undefined : JSON.stringify(body),
+        method, headers, body: form ?? (body === undefined ? undefined : JSON.stringify(body)),
       })
     } catch {
       throw new ApiError(0, 'network', 'Não foi possível conectar ao servidor. Verifique sua internet.')
@@ -55,6 +55,8 @@ export function useApi() {
     post: <T = unknown>(p: string, b?: unknown) => request<T>('POST', p, b ?? {}),
     put: <T = unknown>(p: string, b?: unknown) => request<T>('PUT', p, b ?? {}),
     patch: <T = unknown>(p: string, b?: unknown) => request<T>('PATCH', p, b ?? {}),
+    del: <T = unknown>(p: string) => request<T>('DELETE', p),
+    upload: <T = unknown>(p: string, form: FormData) => request<T>('POST', p, undefined, undefined, form),
   }
 }
 

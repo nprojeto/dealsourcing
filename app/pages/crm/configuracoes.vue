@@ -8,10 +8,12 @@ interface LegalItem { id: string; kind: 'terms' | 'privacy'; version: string; ti
 const api = useApi()
 const toast = useToast()
 const pc = usePublicConfig()
-const tab = ref<'params' | 'legal'>('params')
+const route = useRoute()
+const tab = ref<'params' | 'legal' | 'funil'>(route.query.aba === 'funil' ? 'funil' : 'params')
 
 const CATEGORY_LABEL: Record<string, { t: string; d: string }> = {
   simulador: { t: 'Simulador — o que o provedor vê', d: 'Controla se o proprietário do ISP enxerga a faixa de valor das próprias simulações.' },
+  funil: { t: 'Funil comercial', d: 'Prazos de atendimento, alertas de oportunidades paradas e regras de movimentação.' },
   verificacao: { t: 'Confirmação de e-mail', d: 'Regras dos códigos enviados pela Brevo.' },
   seguranca: { t: 'Segurança', d: 'Proteções contra abuso e política de senha.' },
   cadastro: { t: 'Cadastros públicos', d: 'Quais tipos de cadastro ficam abertos no portal.' },
@@ -110,6 +112,7 @@ onMounted(loadSettings)
 
     <div class="tabs" role="tablist">
       <button class="tab" :class="{ active: tab === 'params' }" role="tab" :aria-selected="tab === 'params'" @click="tab = 'params'">Parâmetros do sistema</button>
+      <button class="tab" :class="{ active: tab === 'funil' }" role="tab" :aria-selected="tab === 'funil'" @click="tab = 'funil'">Etapas do funil</button>
       <button class="tab" :class="{ active: tab === 'legal' }" role="tab" :aria-selected="tab === 'legal'" @click="tab = 'legal'">Documentos legais (LGPD)</button>
     </div>
 
@@ -149,6 +152,8 @@ onMounted(loadSettings)
         </div>
       </div>
     </template>
+
+    <StageEditor v-else-if="tab === 'funil'" />
 
     <template v-else>
       <div class="alert info" style="margin-bottom:1rem">

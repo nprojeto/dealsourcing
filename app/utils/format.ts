@@ -107,3 +107,31 @@ export function maskCep(v: string): string {
   const d = onlyDigits(v).slice(0, 8)
   return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d
 }
+
+/** ISO → valor para <input type="datetime-local"> no fuso local */
+export function toLocalInput(iso?: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+export function fromLocalInput(v: string): string | null {
+  if (!v) return null
+  const d = new Date(v)
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
+}
+export function fmtBytes(n?: number | null): string {
+  if (!n) return '—'
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} KB`
+  return `${(n / 1024 / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB`
+}
+/** "vence em 2 d" / "venceu há 3 h" */
+export function fmtDue(iso?: string | null): string {
+  if (!iso) return ''
+  const diff = new Date(iso).getTime() - Date.now()
+  const abs = Math.abs(diff)
+  const t = abs < 3600_000 ? `${Math.max(1, Math.round(abs / 60_000))} min` : abs < 86400_000 ? `${Math.round(abs / 3600_000)} h` : `${Math.round(abs / 86400_000)} d`
+  return diff >= 0 ? `vence em ${t}` : `venceu há ${t}`
+}

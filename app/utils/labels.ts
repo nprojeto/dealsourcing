@@ -99,3 +99,18 @@ export const CRITERION_FIELD_LABEL: Record<string, string> = {
   employment_type: 'Vínculo empregatício',
   arpu: 'ARPU',
 }
+
+// ----- Fase 4: funil comercial -----
+export const PRIORITY_LABEL: Record<string, string> = { baixa: 'Baixa', normal: 'Normal', alta: 'Alta' }
+export const PRIORITY_TONE: Record<string, string> = { baixa: 'plain', normal: '', alta: 'danger' }
+export const ORIGIN_LABEL: Record<string, string> = { formalizacao: 'Formalização', prospeccao: 'Prospecção', manual: 'Cadastro do portal' }
+export const ACTIVITY_KIND_LABEL: Record<string, string> = {
+  ligacao: 'Ligação', whatsapp: 'WhatsApp', email: 'E-mail', visita: 'Visita', reuniao: 'Reunião', observacao: 'Observação', sistema: 'Sistema',
+}
+export const ACTIVITY_KIND_ICON: Record<string, string> = {
+  ligacao: 'phone', whatsapp: 'send', email: 'mail', visita: 'building', reuniao: 'users', observacao: 'file', sistema: 'refresh',
+}
+export const OUTCOME_LABEL: Record<string, string> = {
+  realizado: 'Contato realizado', sem_resposta: 'Sem resposta', retornar: 'Pediu retorno', sem_interesse: 'Sem interesse',
+}
+export const OUTCOME_TONE: Record<string, string> = { realizado: 'success', sem_resposta: 'warning', retornar: 'info', sem_interesse: 'danger' }

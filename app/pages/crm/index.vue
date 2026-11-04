@@ -11,11 +11,14 @@ const auth = useAuth()
 const api = useApi()
 const toast = useToast()
 const stats = ref<Stats | null>(null)
+const funnel = ref<{ open: number; queue: number; overdue: number; stale: number; mine: number } | null>(null)
 const pending = ref<Row[]>([])
 const loading = ref(true)
 const busy = ref('')
 
 async function load() {
+  api.get<{ summary: { open: number; queue: number; overdue: number; stale: number; mine: number } }>('/crm/opportunities', { status: 'open' })
+    .then((r) => { funnel.value = r.summary }).catch(() => {})
   if (!auth.isManager.value) { loading.value = false; return }
   loading.value = true
   try {
@@ -67,6 +70,14 @@ const hello = computed(() => {
       </button>
     </div>
 
+    <div v-if="funnel" class="funnel-strip card">
+      <div class="fs-title"><AppIcon name="briefcase" :size="18" /> <strong>Funil comercial</strong></div>
+      <NuxtLink to="/crm/oportunidades?visao=tabela" class="fs"><b>{{ funnel.open }}</b> em aberto</NuxtLink>
+      <NuxtLink to="/crm/oportunidades?alert=queue" class="fs" :class="{ warn: funnel.queue }"><b>{{ funnel.queue }}</b> na fila</NuxtLink>
+      <NuxtLink to="/crm/oportunidades?visao=tabela&alert=overdue" class="fs" :class="{ bad: funnel.overdue }"><b>{{ funnel.overdue }}</b> prazo vencido</NuxtLink>
+      <NuxtLink to="/crm/oportunidades?visao=tabela&alert=stale" class="fs" :class="{ warn: funnel.stale }"><b>{{ funnel.stale }}</b> paradas</NuxtLink>
+      <NuxtLink to="/crm/oportunidades" class="fs"><b>{{ funnel.mine }}</b> comigo</NuxtLink>
+    </div>
     <template v-if="auth.isManager.value">
       <div v-if="loading && !stats" class="empty"><span class="spinner" /></div>
       <template v-else-if="stats">
@@ -142,6 +153,15 @@ const hello = computed(() => {
 
 <style scoped>
 .crm-kpis { margin-bottom: 1rem; }
+.funnel-strip { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; padding: .7rem .9rem; margin-bottom: 1rem; border-left: 4px solid var(--navy); }
+.fs-title { display: inline-flex; align-items: center; gap: .4rem; color: var(--navy); margin-right: .5rem; }
+.fs { padding: .35rem .75rem; border-radius: 99px; background: var(--tint); border: 1px solid var(--line); font-size: .85rem; color: var(--ink-2); text-decoration: none; }
+.fs b { color: var(--navy); }
+.fs:hover { border-color: var(--blue); text-decoration: none; }
+.fs.warn { background: var(--warning-bg); border-color: transparent; }
+.fs.warn b { color: var(--warning); }
+.fs.bad { background: var(--danger-bg); border-color: transparent; }
+.fs.bad b { color: var(--danger); }
 .kpi.link { color: inherit; text-decoration: none; transition: border-color .15s, box-shadow .15s; }
 .kpi.link:hover { border-color: var(--blue); box-shadow: var(--shadow); text-decoration: none; }
 .kpi.navy { background: var(--navy); border-color: var(--navy); }

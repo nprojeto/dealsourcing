@@ -18,7 +18,7 @@ interface Sim {
 interface Detail {
   isp: Row & { email: string; phone: string; responsible_name: string; cep: string | null; street: string; number: string; complement: string | null; district: string; owner: { full_name: string; email: string; phone: string | null } | null; referrer: { full_name: string; email: string } | null };
   simulations: Sim[]; formalizations: { id: string; simulation_id: string; formalized_at: string }[];
-  opportunity: { stage_key: string; stage: { name: string } | null; in_queue: boolean; formalizations_count: number; first_formalized_at: string; last_formalized_at: string } | null;
+  opportunity: { id: string; stage_key: string; stage: { name: string } | null; in_queue: boolean; formalizations_count: number; first_formalized_at: string | null; last_formalized_at: string | null } | null;
   attributions: { code: string | null; owner_type: string | null; is_current: boolean; reason: string | null; attributed_at: string; owner: { full_name: string } | null }[]
 }
 
@@ -67,6 +67,15 @@ async function reassign() {
     Object.assign(refForm, { open: false, code: '', reason: '' })
     await Promise.all([open(id), load()])
   } catch (e) { refForm.error = errorMessage(e) } finally { refForm.busy = false }
+}
+const creatingOpp = ref(false)
+async function createOpp() {
+  creatingOpp.value = true
+  try {
+    const r = await api.post<{ id: string }>('/crm/opportunities', { isp_id: detail.value!.isp.id })
+    toast.success('Oportunidade criada no funil.')
+    await navigateTo(`/crm/oportunidades?id=${r.id}`)
+  } catch (e) { toast.error(errorMessage(e)) } finally { creatingOpp.value = false }
 }
 function close() { refForm.open = false; detailOpen.value = false; if (route.query.id) router.replace({ query: { ...route.query, id: undefined } }) }
 </script>
@@ -130,6 +139,8 @@ function close() { refForm.open = false; detailOpen.value = false; if (route.que
           <span class="badge" :class="ISP_STATUS_TONE[detail.isp.status]">{{ ISP_STATUS_LABEL[detail.isp.status] }}</span>
           <span v-if="detail.opportunity" class="badge navy plain">Funil: {{ detail.opportunity.stage?.name }}</span>
           <span v-if="detail.opportunity?.in_queue" class="badge warning">Na fila de atendimento</span>
+          <NuxtLink v-if="detail.opportunity" :to="`/crm/oportunidades?id=${detail.opportunity.id}`" class="btn btn-navy btn-sm" style="margin-left:auto"><AppIcon name="briefcase" :size="16" /> Abrir no funil</NuxtLink>
+          <button v-else class="btn btn-sm" style="margin-left:auto" :disabled="creatingOpp" @click="createOpp"><AppIcon name="plus" :size="16" /> Criar oportunidade</button>
         </div>
 
         <section>
@@ -150,7 +161,7 @@ function close() { refForm.open = false; detailOpen.value = false; if (route.que
           <dl class="dl">
             <dt>Código</dt><dd><span class="mono">{{ detail.isp.referral_code ?? 'Sem código (direto)' }}</span></dd>
             <dt>Responsável</dt><dd>{{ detail.isp.referrer?.full_name ?? '—' }}<template v-if="detail.isp.referral_owner_type"> · {{ detail.isp.referral_owner_type === 'external' ? 'Parceiro externo' : 'Equipe interna' }}</template></dd>
-            <template v-if="detail.opportunity">
+            <template v-if="detail.opportunity?.first_formalized_at">
               <dt>1ª formalização</dt><dd>{{ fmtDateTime(detail.opportunity.first_formalized_at) }}</dd>
               <dt>Formalizações</dt><dd>{{ detail.opportunity.formalizations_count }}</dd>
             </template>

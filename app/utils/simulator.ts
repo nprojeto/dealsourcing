@@ -32,3 +32,23 @@ export interface ReferredIsp {
 export interface PerformancePayload {
   performance: Performance; isps: ReferredIsp[]; code: string | null; owner_type: string | null; link: string | null
 }
+
+// ----- Fase 4: funil -----
+export interface Stage {
+  key: string; name: string; position: number; is_won: boolean; is_lost: boolean; active: boolean; is_system: boolean
+  description: string | null; sla_days: number | null; requires_assignee: boolean; requires_note: boolean; count?: number
+}
+export interface OppItem {
+  id: string; isp_id: string | null; stage_key: string; priority: string; origin: string; in_queue: boolean
+  name: string; city: string | null; state: string | null; value_min: number | null; value_max: number | null; client_base: number | null
+  assigned_to: string | null; created_by: string | null; referral_owner_id: string | null
+  assignee: { id: string; full_name: string } | null; referrer: { full_name: string } | null; creator: { full_name: string } | null
+  stage: { key: string; name: string; is_won: boolean; is_lost: boolean } | null
+  next_step: string | null; due_at: string | null; last_activity_at: string; stage_entered_at: string
+  first_formalized_at: string | null; lost_reason: string | null; notes: string | null
+  prospect_name: string | null; prospect_cnpj: string | null; prospect_city: string | null; prospect_state: string | null
+  prospect_contact: string | null; prospect_phone: string | null; prospect_email: string | null; client_base_estimate: number | null
+  open: boolean; overdue: boolean; stale: boolean; days_in_stage: number; days_idle: number; created_at: string
+  isp: { trade_name: string; legal_name: string; cnpj: string; city: string; state: string; phone: string; email: string; responsible_name: string; referral_code: string | null } | null
+}
+export interface Assignee { id: string; full_name: string; email: string; role: string; open: number }
