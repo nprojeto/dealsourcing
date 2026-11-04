@@ -233,7 +233,8 @@ img { max-width: 100%; display: block; }
 .empty img { width: 64px; opacity: .25; margin: 0 auto 1rem; }
 
 .divider { height: 1px; background: var(--line); margin: 1.25rem 0; border: 0; }
-.dl { display: grid; grid-template-columns: minmax(120px, 38%) 1fr; gap: .55rem 1rem; font-size: .9rem; margin: 0; }
+.dl { display: grid; grid-template-columns: minmax(120px, 38%) 1fr; gap: .55rem 1rem; font-size: .9rem; margin-left: 0; margin-right: 0; margin-bottom: 0; }
+.dl:first-child { margin-top: 0; }
 .dl dt { color: var(--muted); font-weight: 500; }
 .dl dd { margin: 0; color: var(--ink); word-break: break-word; }
 

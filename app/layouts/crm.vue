@@ -9,6 +9,7 @@ interface Item { to: string; label: string; icon: string; roles?: Role[] }
 const groups: { title: string; items: Item[] }[] = [
   { title: 'Visão geral', items: [
     { to: '/crm', label: 'Painel', icon: 'dashboard' },
+    { to: '/crm/agenda', label: 'Agenda', icon: 'calendar' },
     { to: '/crm/desempenho', label: 'Meu desempenho', icon: 'chart' },
     { to: '/notificacoes', label: 'Notificações', icon: 'bell' },
   ] },

@@ -6,7 +6,11 @@ Frontend em **Nuxt 4 + Vue 3 + TypeScript**, com identidade visual NOVALE
 (marinho `#0D2B5E`, azul `#14268A`, fundo `#F7F9FD`, bordas `#D8DEEC`).
 Backend: **Supabase** (banco, autenticação e Edge Function `api`).
 
-## Fases entregues: 1 — Fundação · 2 — Simulador · 3 — Equipe e parceiros · 4 — CRM e funil
+## Fases entregues: 1 a 5 (Fundação, Simulador, Equipe e parceiros, CRM e funil, Reuniões)
+
+**Fase 5:** agenda (mês e lista), agendamento com participantes, link ou endereço, 7 status,
+resultado e próximos passos, integração com o funil, lembretes, aviso de conflito de horário,
+convite por e-mail com arquivo de calendário (.ics) e reuniões no portal do provedor.
 
 **Fase 4:** funil em Kanban (arrastar e soltar), tabela e fila de atendimento; prospecção de ISPs
 ainda não cadastrados (vinculada automaticamente pelo CNPJ); atribuição, transferência,

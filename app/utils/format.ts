@@ -135,3 +135,6 @@ export function fmtDue(iso?: string | null): string {
   const t = abs < 3600_000 ? `${Math.max(1, Math.round(abs / 60_000))} min` : abs < 86400_000 ? `${Math.round(abs / 3600_000)} h` : `${Math.round(abs / 86400_000)} d`
   return diff >= 0 ? `vence em ${t}` : `venceu há ${t}`
 }
+
+/** Primeira letra maiúscula (sem afetar preposições: "novembro de 2026" → "Novembro de 2026") */
+export function capFirst(s: string): string { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s }

@@ -11,6 +11,8 @@ const auth = useAuth()
 const api = useApi()
 const toast = useToast()
 const stats = ref<Stats | null>(null)
+const upcoming = ref<{ id: string; title: string; starts_at: string; opp_name: string; mode: string; status: string; organizer: { full_name: string } | null }[]>([])
+const pendingMeetings = ref(0)
 const funnel = ref<{ open: number; queue: number; overdue: number; stale: number; mine: number } | null>(null)
 const pending = ref<Row[]>([])
 const loading = ref(true)
@@ -19,6 +21,8 @@ const busy = ref('')
 async function load() {
   api.get<{ summary: { open: number; queue: number; overdue: number; stale: number; mine: number } }>('/crm/opportunities', { status: 'open' })
     .then((r) => { funnel.value = r.summary }).catch(() => {})
+  api.get<{ items: typeof upcoming.value; pending_result: unknown[] }>('/crm/meetings', { from: new Date().toISOString(), to: new Date(Date.now() + 7 * 86400_000).toISOString(), organizer: auth.isManager.value ? '' : 'me' })
+    .then((r) => { upcoming.value = r.items.filter((m) => ['agendada', 'confirmada', 'reagendada'].includes(m.status)).slice(0, 6); pendingMeetings.value = r.pending_result.length }).catch(() => {})
   if (!auth.isManager.value) { loading.value = false; return }
   loading.value = true
   try {
@@ -78,6 +82,17 @@ const hello = computed(() => {
       <NuxtLink to="/crm/oportunidades?visao=tabela&alert=stale" class="fs" :class="{ warn: funnel.stale }"><b>{{ funnel.stale }}</b> paradas</NuxtLink>
       <NuxtLink to="/crm/oportunidades" class="fs"><b>{{ funnel.mine }}</b> comigo</NuxtLink>
     </div>
+    <article class="card meet-card">
+      <div class="card-head"><h2>Próximas reuniões</h2>
+        <div class="row"><span v-if="pendingMeetings" class="badge danger">{{ pendingMeetings }} sem resultado</span><NuxtLink to="/crm/agenda?visao=lista" class="small">Ver agenda</NuxtLink></div></div>
+      <p v-if="!upcoming.length" class="small muted" style="padding:1rem 1.4rem;margin:0">Nenhuma reunião nos próximos 7 dias.</p>
+      <ul v-else class="meet-list">
+        <li v-for="m in upcoming" :key="m.id"><NuxtLink :to="`/crm/agenda?id=${m.id}`">
+          <span class="when"><b>{{ new Date(m.starts_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: 'America/Sao_Paulo' }) }}</b>{{ new Date(m.starts_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) }}</span>
+          <span class="grow"><span class="t-strong">{{ m.opp_name }}</span><span class="small muted"> · {{ m.title }} · {{ m.organizer?.full_name }}</span></span>
+          <AppIcon :name="MEETING_MODE_ICON[m.mode] ?? 'calendar'" :size="16" /></NuxtLink></li>
+      </ul>
+    </article>
     <template v-if="auth.isManager.value">
       <div v-if="loading && !stats" class="empty"><span class="spinner" /></div>
       <template v-else-if="stats">
@@ -153,6 +168,13 @@ const hello = computed(() => {
 
 <style scoped>
 .crm-kpis { margin-bottom: 1rem; }
+.meet-card { margin-bottom: 1rem; }
+.meet-list { list-style: none; margin: 0; padding: 0; }
+.meet-list a { display: flex; align-items: center; gap: .9rem; padding: .65rem 1.4rem; border-top: 1px solid var(--line); color: inherit; text-decoration: none; }
+.meet-list li:first-child a { border-top: 0; }
+.meet-list a:hover { background: var(--tint); }
+.meet-list .when { display: flex; flex-direction: column; min-width: 58px; font-size: .8rem; color: var(--muted); }
+.meet-list .when b { color: var(--navy); font-family: var(--font-head); }
 .funnel-strip { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; padding: .7rem .9rem; margin-bottom: 1rem; border-left: 4px solid var(--navy); }
 .fs-title { display: inline-flex; align-items: center; gap: .4rem; color: var(--navy); margin-right: .5rem; }
 .fs { padding: .35rem .75rem; border-radius: 99px; background: var(--tint); border: 1px solid var(--line); font-size: .85rem; color: var(--ink-2); text-decoration: none; }

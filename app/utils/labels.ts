@@ -114,3 +114,14 @@ export const OUTCOME_LABEL: Record<string, string> = {
   realizado: 'Contato realizado', sem_resposta: 'Sem resposta', retornar: 'Pediu retorno', sem_interesse: 'Sem interesse',
 }
 export const OUTCOME_TONE: Record<string, string> = { realizado: 'success', sem_resposta: 'warning', retornar: 'info', sem_interesse: 'danger' }
+
+// ----- Fase 5: reuniões -----
+export const MEETING_STATUS_LABEL: Record<string, string> = {
+  aguardando_agendamento: 'Aguardando agendamento', agendada: 'Agendada', confirmada: 'Confirmada', realizada: 'Realizada',
+  reagendada: 'Reagendada', cancelada: 'Cancelada', nao_compareceu: 'Não compareceu',
+}
+export const MEETING_STATUS_TONE: Record<string, string> = {
+  aguardando_agendamento: 'plain', agendada: 'info', confirmada: 'success', realizada: 'navy', reagendada: 'warning', cancelada: '', nao_compareceu: 'danger',
+}
+export const MEETING_MODE_LABEL: Record<string, string> = { online: 'Online', presencial: 'Presencial', telefone: 'Telefone' }
+export const MEETING_MODE_ICON: Record<string, string> = { online: 'video', presencial: 'map-pin', telefone: 'phone' }

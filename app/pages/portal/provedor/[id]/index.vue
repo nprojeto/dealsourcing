@@ -14,13 +14,17 @@ const id = String(route.params.id)
 const isp = ref<Isp | null>(null)
 const sims = ref<Sim[]>([])
 const showValue = ref(false)
+interface PortalMeeting { id: string; title: string; status: string; starts_at: string | null; duration_min: number; mode: string; address: string | null; meeting_url: string | null; organizer: { full_name: string; email: string; phone: string | null } | null }
+const meetings = ref<PortalMeeting[]>([])
+const upcomingMeetings = computed(() => meetings.value.filter((m) => ['agendada', 'confirmada', 'reagendada', 'aguardando_agendamento'].includes(m.status)))
+const pastMeetings = computed(() => meetings.value.filter((m) => !['agendada', 'confirmada', 'reagendada', 'aguardando_agendamento'].includes(m.status)))
 const viewing = ref<Sim | null>(null)
 const loading = ref(true)
 const confirming = ref<Sim | null>(null)
 const busy = ref(false)
 
 async function load() {
-  try { const r = await api.get<{ isp: Isp; simulations: Sim[]; show_value: boolean }>(`/isp/companies/${id}`); isp.value = r.isp; sims.value = r.simulations; showValue.value = r.show_value }
+  try { const r = await api.get<{ isp: Isp; simulations: Sim[]; show_value: boolean; meetings: PortalMeeting[] }>(`/isp/companies/${id}`); isp.value = r.isp; sims.value = r.simulations; showValue.value = r.show_value; meetings.value = r.meetings ?? [] }
   catch (e) { toast.error(errorMessage(e)); await navigateTo('/portal') } finally { loading.value = false }
 }
 onMounted(load)
@@ -85,6 +89,20 @@ async function formalize() {
             : 'A avaliação preliminar é analisada internamente pela equipe NOVALE. Ao formalizar interesse, um especialista entra em contato para apresentar os próximos passos.' }}</p>
         </article>
 
+        <div class="stack">
+        <article v-if="meetings.length" class="card">
+          <div class="card-head"><h2>Reuniões com a NOVALE</h2></div>
+          <ul class="pm">
+            <li v-for="m in upcomingMeetings" :key="m.id" class="up">
+              <div class="row between"><strong>{{ m.title }}</strong><span class="badge" :class="MEETING_STATUS_TONE[m.status]">{{ MEETING_STATUS_LABEL[m.status] }}</span></div>
+              <div class="small">{{ m.starts_at ? fmtDateTime(m.starts_at) : 'Data a definir' }}<template v-if="m.starts_at"> · {{ m.duration_min }} min</template> · {{ MEETING_MODE_LABEL[m.mode] }}</div>
+              <a v-if="m.meeting_url" :href="m.meeting_url" target="_blank" rel="noopener" class="btn btn-sm btn-navy" style="margin-top:.5rem"><AppIcon name="video" :size="16" /> Entrar na reunião</a>
+              <div v-if="m.address" class="small muted"><AppIcon name="map-pin" :size="13" /> {{ m.address }}</div>
+              <div v-if="m.organizer" class="small muted">Contato: {{ m.organizer.full_name }} · {{ m.organizer.email }}<template v-if="m.organizer.phone"> · {{ fmtPhone(m.organizer.phone) }}</template></div>
+            </li>
+            <li v-for="m in pastMeetings" :key="m.id" class="past"><span class="small">{{ m.title }} · {{ m.starts_at ? fmtDate(m.starts_at) : '—' }}</span><span class="badge" :class="MEETING_STATUS_TONE[m.status]">{{ MEETING_STATUS_LABEL[m.status] }}</span></li>
+          </ul>
+        </article>
         <article class="card">
           <div class="card-head"><h2>Dados cadastrais</h2></div>
           <div class="card-body">
@@ -99,6 +117,7 @@ async function formalize() {
             </dl>
           </div>
         </article>
+        </div>
       </div>
     </template>
 
@@ -125,6 +144,11 @@ async function formalize() {
 .back { display: inline-flex; align-items: center; gap: .35rem; font-size: .88rem; margin-bottom: .75rem; }
 .layout { display: grid; grid-template-columns: 1.6fr 1fr; gap: 1.25rem; align-items: start; }
 .money { color: var(--navy); display: block; }
+.pm { list-style: none; margin: 0; padding: 0; }
+.pm li { padding: .85rem 1.4rem; border-top: 1px solid var(--line); display: grid; gap: .2rem; }
+.pm li:first-child { border-top: 0; }
+.pm li.up { border-left: 3px solid var(--blue); }
+.pm li.past { display: flex; justify-content: space-between; align-items: center; gap: .5rem; color: var(--muted); }
 .side-dl { grid-template-columns: 1fr; gap: .1rem; }
 .side-dl dt { font-size: .76rem; text-transform: uppercase; letter-spacing: .05em; margin-top: .6rem; }
 .side-dl dt:first-child { margin-top: 0; }

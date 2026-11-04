@@ -32,7 +32,7 @@ function openIsp(i: ReferredIsp) { if (props.internal) navigateTo(`/crm/provedor
     <div class="grid-4 kpis">
       <div class="card kpi"><div class="kpi-label">Provedores indicados</div><div class="kpi-value">{{ p.isps }}</div><div class="kpi-foot">cadastrados com o código</div></div>
       <div class="card kpi"><div class="kpi-label">Simulações</div><div class="kpi-value">{{ p.simulations }}</div><div class="kpi-foot">{{ p.isps_simulated }} provedor(es) simularam</div></div>
-      <div class="card kpi ok"><div class="kpi-label">Interesses formalizados</div><div class="kpi-value">{{ p.isps_formalized }}</div><div class="kpi-foot">{{ p.opportunities_open }} oportunidade(s) em andamento</div></div>
+      <div class="card kpi ok"><div class="kpi-label">Interesses formalizados</div><div class="kpi-value">{{ p.isps_formalized }}</div><div class="kpi-foot">{{ p.opportunities_open }} em andamento · {{ p.meetings ?? 0 }} reunião(ões)</div></div>
       <div class="card kpi navy"><div class="kpi-label">Aquisições concluídas</div><div class="kpi-value">{{ p.acquisitions }}</div><div class="kpi-foot">{{ p.lost }} encerrada(s) sem acordo</div></div>
     </div>
     <p v-if="showAssigned && p.assigned_open" class="small muted" style="margin:0">Você também é responsável por <strong>{{ p.assigned_open }}</strong> oportunidade(s) em atendimento.</p>

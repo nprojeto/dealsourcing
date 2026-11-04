@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Assignee, OppItem, SimResult, Stage } from '~/utils/simulator'
+import type { Assignee, MeetingItem, OppItem, SimResult, Stage } from '~/utils/simulator'
 
 interface Activity { id: string; kind: string; outcome: string | null; event: string | null; description: string | null; occurred_at: string; user: { full_name: string } | null; data: Record<string, unknown> }
 interface Attachment { id: string; file_name: string; mime_type: string; size_bytes: number; created_at: string; uploaded_by: string; uploader: { full_name: string } | null }
@@ -19,7 +19,8 @@ const auth = useAuth()
 
 const d = ref<Detail | null>(null)
 const loading = ref(false)
-const tab = ref<'resumo' | 'atividades' | 'simulacoes' | 'documentos'>('resumo')
+const tab = ref<'resumo' | 'atividades' | 'simulacoes' | 'documentos' | 'reunioes'>('resumo')
+const meetings = ref<MeetingItem[]>([])
 const busy = ref('')
 const o = computed(() => d.value?.opportunity ?? null)
 
@@ -27,7 +28,13 @@ async function load(keepTab = false) {
   if (!props.id) return
   loading.value = !d.value || d.value.opportunity.id !== props.id
   if (!keepTab) tab.value = 'resumo'
-  try { d.value = await api.get<Detail>(`/crm/opportunities/${props.id}`); syncForms() }
+  try {
+    const [det, mt] = await Promise.all([
+      api.get<Detail>(`/crm/opportunities/${props.id}`),
+      api.get<{ items: MeetingItem[] }>('/crm/meetings', { opportunity_id: props.id }).catch(() => ({ items: [] as MeetingItem[] })),
+    ])
+    d.value = det; meetings.value = mt.items; syncForms()
+  }
   catch (e) { toast.error(errorMessage(e)); emit('close') } finally { loading.value = false }
 }
 watch(() => props.id, (v) => { if (v) { d.value = null; load() } }, { immediate: true })
@@ -176,6 +183,7 @@ const formalizedIds = computed(() => new Set((d.value?.formalizations ?? []).map
         <button class="tab" :class="{ active: tab === 'resumo' }" @click="tab = 'resumo'">Resumo</button>
         <button class="tab" :class="{ active: tab === 'atividades' }" @click="tab = 'atividades'">Atividades ({{ d.activities.length }})</button>
         <button v-if="o.isp_id" class="tab" :class="{ active: tab === 'simulacoes' }" @click="tab = 'simulacoes'">Simulações ({{ d.simulations.length }})</button>
+        <button class="tab" :class="{ active: tab === 'reunioes' }" @click="tab = 'reunioes'">Reuniões ({{ meetings.length }})</button>
         <button class="tab" :class="{ active: tab === 'documentos' }" @click="tab = 'documentos'">Documentos ({{ d.attachments.length }})</button>
       </div>
 
@@ -265,6 +273,20 @@ const formalizedIds = computed(() => new Set((d.value?.formalizations ?? []).map
           <SimulationResult v-if="s.result" :result="s.result" :client-base="s.client_base" />
           <p class="small muted" style="margin:.5rem 0 0">{{ s.cities.join(', ') }} · ARPU {{ fmtBRL(s.arpu) }} · postes {{ Number(s.poles_valid_pct).toLocaleString('pt-BR') }}% · {{ s.technicians_count }} técnicos/{{ s.employees_count }} funcionários ({{ s.employment_type }}) · regularizado: {{ s.regularized === 'SIM' ? 'sim' : 'não' }}</p>
         </article>
+      </div>
+
+      <!-- REUNIÕES -->
+      <div v-else-if="tab === 'reunioes'" class="stack">
+        <div v-if="d.can_edit && o.open" class="row"><NuxtLink :to="`/crm/agenda?novo=${o.id}`" class="btn btn-sm"><AppIcon name="calendar" :size="16" /> Agendar reunião</NuxtLink></div>
+        <p v-if="!meetings.length" class="muted small">Nenhuma reunião registrada.</p>
+        <ul v-else class="files">
+          <li v-for="m in meetings" :key="m.id">
+            <AppIcon :name="MEETING_MODE_ICON[m.mode] ?? 'calendar'" :size="18" />
+            <div class="grow"><NuxtLink :to="`/crm/agenda?id=${m.id}`" class="link-btn">{{ m.title }}</NuxtLink>
+              <div class="small muted">{{ m.starts_at ? fmtDateTime(m.starts_at) : 'Data a definir' }} · {{ m.organizer?.full_name }}</div></div>
+            <span class="badge" :class="MEETING_STATUS_TONE[m.status]">{{ MEETING_STATUS_LABEL[m.status] }}</span>
+          </li>
+        </ul>
       </div>
 
       <!-- DOCUMENTOS -->

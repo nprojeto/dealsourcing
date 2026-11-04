@@ -21,7 +21,7 @@ export interface OwnerResultData {
 
 // ----- Fase 3: desempenho (sem valores financeiros) -----
 export interface Performance {
-  isps: number; isps_simulated: number; simulations: number; isps_formalized: number; formalizations: number
+  isps: number; isps_simulated: number; simulations: number; isps_formalized: number; formalizations: number; meetings?: number
   opportunities_open: number; acquisitions: number; lost: number; assigned_open: number; last_activity: string | null
   monthly: { month: string; isps: number; simulations: number; formalizations: number }[]
 }
@@ -52,3 +52,13 @@ export interface OppItem {
   isp: { trade_name: string; legal_name: string; cnpj: string; city: string; state: string; phone: string; email: string; responsible_name: string; referral_code: string | null } | null
 }
 export interface Assignee { id: string; full_name: string; email: string; role: string; open: number }
+
+// ----- Fase 5: reuniões -----
+export interface MeetingParticipant { id?: string; kind: 'interno' | 'provedor' | 'externo'; user_id?: string | null; name: string; email?: string | null; phone?: string | null }
+export interface MeetingItem {
+  id: string; opportunity_id: string; isp_id: string | null; title: string; status: string; starts_at: string | null; ends_at: string | null
+  duration_min: number; mode: string; address: string | null; meeting_url: string | null; organizer_id: string; notes: string | null
+  outcome: string | null; next_steps: string | null; cancel_reason: string | null; visible_to_isp: boolean; created_at: string
+  organizer: { id: string; full_name: string; email: string; phone: string | null } | null
+  participants: MeetingParticipant[]; opp_name: string; city: string | null; state: string | null; result_pending: boolean
+}
