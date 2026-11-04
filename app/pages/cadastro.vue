@@ -103,14 +103,14 @@ async function submit() {
       </div>
       <div class="field">
         <label for="phone">Telefone / WhatsApp<span class="req">*</span></label>
-        <input id="phone" class="input" inputmode="tel" autocomplete="tel" :value="form.phone" :aria-invalid="!!errors.phone"
-          placeholder="(12) 99999-9999" @input="form.phone = maskPhone(($event.target as HTMLInputElement).value)">
+        <input maxlength="15" id="phone" class="input" inputmode="tel" autocomplete="tel" :value="form.phone" :aria-invalid="!!errors.phone"
+          placeholder="(12) 99999-9999" @input="form.phone = masked($event, maskPhone)">
         <span v-if="errors.phone" class="error">{{ errors.phone }}</span>
       </div>
       <div class="field">
         <label for="doc">{{ docLabel }}</label>
-        <input id="doc" class="input" inputmode="numeric" :value="form.document" :aria-invalid="!!errors.document"
-          @input="form.document = maskDocument(($event.target as HTMLInputElement).value)">
+        <input maxlength="18" id="doc" class="input" inputmode="numeric" :value="form.document" :aria-invalid="!!errors.document"
+          @input="form.document = masked($event, maskDocument)">
         <span v-if="errors.document" class="error">{{ errors.document }}</span>
       </div>
       <div class="field">

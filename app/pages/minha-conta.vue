@@ -57,7 +57,7 @@ async function changePassword() {
           <div class="field full"><label for="n">Nome completo</label><input id="n" v-model="form.full_name" class="input" autocomplete="name"></div>
           <div class="field"><label for="e">E-mail</label><input id="e" :value="p.email" class="input" disabled><span class="hint">Para alterar o e-mail, contate o administrador.</span></div>
           <div class="field"><label for="t">Telefone / WhatsApp</label>
-            <input id="t" class="input" inputmode="tel" :value="form.phone" @input="form.phone = maskPhone(($event.target as HTMLInputElement).value)"></div>
+            <input maxlength="15" id="t" class="input" inputmode="tel" :value="form.phone" @input="form.phone = masked($event, maskPhone)"></div>
           <div class="field full"><label for="c">{{ p.role === 'isp_owner' ? 'Nome do provedor' : 'Empresa / área' }}</label><input id="c" v-model="form.company_name" class="input"></div>
           <div v-if="err" class="alert danger full"><AppIcon name="alert" :size="18" /> {{ err }}</div>
           <div class="full row end"><button class="btn" :disabled="saving"><span v-if="saving" class="spinner" /> Salvar dados</button></div>

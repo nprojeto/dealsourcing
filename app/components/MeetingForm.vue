@@ -127,7 +127,7 @@ async function save() {
           <select v-model="p.kind" class="select sm" aria-label="Tipo"><option value="provedor">Provedor</option><option value="externo">Convidado</option></select>
           <input v-model="p.name" class="input sm" placeholder="Nome" aria-label="Nome">
           <input v-model="p.email" class="input sm" type="email" placeholder="E-mail" aria-label="E-mail">
-          <input class="input sm" :value="p.phone" placeholder="Telefone" aria-label="Telefone" @input="p.phone = maskPhone(($event.target as HTMLInputElement).value)">
+          <input maxlength="15" class="input sm" :value="p.phone" placeholder="Telefone" aria-label="Telefone" @input="p.phone = masked($event, maskPhone)">
           <button class="icon-btn" type="button" aria-label="Remover" @click="externals.splice(i, 1)"><AppIcon name="x" :size="16" /></button>
         </div>
         <span v-for="(msg, k) in errors" v-show="String(k).startsWith('participants')" :key="k" class="error">{{ msg }}</span>

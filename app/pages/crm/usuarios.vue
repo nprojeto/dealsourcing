@@ -300,7 +300,7 @@ function describeChange(h: HistoryItem): string {
         <div class="field full"><label for="c-name">Nome completo<span class="req">*</span></label><input id="c-name" v-model="createForm.full_name" class="input"></div>
         <div class="field"><label for="c-email">E-mail<span class="req">*</span></label><input id="c-email" v-model="createForm.email" class="input" type="email"></div>
         <div class="field"><label for="c-phone">Telefone<span class="req">*</span></label>
-          <input id="c-phone" class="input" :value="createForm.phone" inputmode="tel" @input="createForm.phone = maskPhone(($event.target as HTMLInputElement).value)"></div>
+          <input maxlength="15" id="c-phone" class="input" :value="createForm.phone" inputmode="tel" @input="createForm.phone = masked($event, maskPhone)"></div>
         <div class="field"><label for="c-role">Perfil<span class="req">*</span></label>
           <select id="c-role" v-model="createForm.role" class="select"><option v-for="r in ALL_ROLES" :key="r" :value="r">{{ ROLE_LABEL[r] }}</option></select></div>
         <div class="field"><label for="c-company">Empresa / área</label><input id="c-company" v-model="createForm.company_name" class="input"></div>

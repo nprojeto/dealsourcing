@@ -148,3 +148,16 @@ export function fmtDay(v?: string | null): string {
 export function todayISO(): string {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' })
 }
+
+/** Aplica a máscara e reescreve o campo na hora (impede digitar além do tamanho). */
+export function masked(e: Event, fn: (v: string) => string): string {
+  const el = e.target as HTMLInputElement
+  const pos = el.selectionStart ?? el.value.length
+  const atEnd = pos >= el.value.length
+  const v = fn(el.value)
+  if (el.value !== v) {
+    el.value = v
+    if (atEnd) el.setSelectionRange(v.length, v.length)
+  }
+  return v
+}

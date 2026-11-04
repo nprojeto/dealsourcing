@@ -223,14 +223,14 @@ const formalizedIds = computed(() => new Set((d.value?.formalizations ?? []).map
             <div class="field"><label for="pc">Cidade</label><input id="pc" v-model="f.prospect_city" class="input" :disabled="!d.can_edit"></div>
             <div class="field"><label for="pu">UF</label><select id="pu" v-model="f.prospect_state" class="select" :disabled="!d.can_edit"><option value="">—</option><option v-for="u in UFS" :key="u" :value="u">{{ u }}</option></select></div>
             <div class="field"><label for="pct">Contato</label><input id="pct" v-model="f.prospect_contact" class="input" :disabled="!d.can_edit"></div>
-            <div class="field"><label for="pph">Telefone</label><input id="pph" class="input" :value="f.prospect_phone" :disabled="!d.can_edit" @input="f.prospect_phone = maskPhone(($event.target as HTMLInputElement).value)"></div>
+            <div class="field"><label for="pph">Telefone</label><input maxlength="15" id="pph" class="input" :value="f.prospect_phone" :disabled="!d.can_edit" @input="f.prospect_phone = masked($event, maskPhone)"></div>
             <div class="field"><label for="pem">E-mail</label><input id="pem" v-model="f.prospect_email" class="input" type="email" :disabled="!d.can_edit"></div>
             <div class="field"><label for="pcb">Clientes (estimativa)</label><input id="pcb" v-model="f.client_base_estimate" class="input" type="number" min="0" :disabled="!d.can_edit"></div>
             <p class="small muted full" style="margin:0">CNPJ: <span class="mono">{{ o.prospect_cnpj ? fmtDocument(o.prospect_cnpj) : 'não informado' }}</span>. Quando o provedor se cadastrar no portal com este CNPJ, a oportunidade é vinculada automaticamente.</p>
           </div>
         </section>
 
-        <section v-if="d.can_assign || o.deal_value" class="box stack">
+        <section v-if="d.can_assign" class="box stack">
           <div class="eyebrow">Negócio e comissões</div>
           <div class="row" style="align-items:flex-end">
             <div class="field" style="flex:1;min-width:200px"><label for="dv">Valor do negócio fechado</label>

@@ -136,8 +136,8 @@ function again() {
               <input id="em" v-model="f.email" class="input" type="email" :aria-invalid="!!errors.email">
               <span v-if="errors.email" class="error">{{ errors.email }}</span></div>
             <div class="field"><label for="ph">Telefone<span class="req">*</span></label>
-              <input id="ph" class="input" inputmode="tel" :value="f.phone" :aria-invalid="!!errors.phone"
-                @input="f.phone = maskPhone(($event.target as HTMLInputElement).value)">
+              <input maxlength="15" id="ph" class="input" inputmode="tel" :value="f.phone" :aria-invalid="!!errors.phone"
+                @input="f.phone = masked($event, maskPhone)">
               <span v-if="errors.phone" class="error">{{ errors.phone }}</span></div>
           </div>
         </article>

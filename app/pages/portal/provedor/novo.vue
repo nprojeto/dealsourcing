@@ -108,8 +108,8 @@ async function submit() {
             <input id="trade" v-model="form.trade_name" class="input" :aria-invalid="!!errors.trade_name">
             <span v-if="errors.trade_name" class="error">{{ errors.trade_name }}</span></div>
           <div class="field"><label for="cnpj">CNPJ<span class="req">*</span></label>
-            <input id="cnpj" class="input" inputmode="numeric" :value="form.cnpj" placeholder="00.000.000/0000-00" :aria-invalid="!!errors.cnpj"
-              @input="form.cnpj = maskDocument(($event.target as HTMLInputElement).value).slice(0, 18)">
+            <input maxlength="18" id="cnpj" class="input" inputmode="numeric" :value="form.cnpj" placeholder="00.000.000/0000-00" :aria-invalid="!!errors.cnpj"
+              @input="form.cnpj = masked($event, maskDocument)">
             <span v-if="errors.cnpj" class="error">{{ errors.cnpj }}</span></div>
         </div>
       </article>
@@ -124,8 +124,8 @@ async function submit() {
             <input id="em" v-model="form.email" class="input" type="email" :aria-invalid="!!errors.email">
             <span v-if="errors.email" class="error">{{ errors.email }}</span></div>
           <div class="field"><label for="ph">Telefone / WhatsApp<span class="req">*</span></label>
-            <input id="ph" class="input" inputmode="tel" :value="form.phone" :aria-invalid="!!errors.phone"
-              @input="form.phone = maskPhone(($event.target as HTMLInputElement).value)">
+            <input maxlength="15" id="ph" class="input" inputmode="tel" :value="form.phone" :aria-invalid="!!errors.phone"
+              @input="form.phone = masked($event, maskPhone)">
             <span v-if="errors.phone" class="error">{{ errors.phone }}</span></div>
         </div>
       </article>
@@ -134,8 +134,8 @@ async function submit() {
         <div class="card-head"><h2>Endereço</h2></div>
         <div class="card-body form-grid addr">
           <div class="field"><label for="cep">CEP</label>
-            <div class="cep"><input id="cep" class="input" inputmode="numeric" :value="form.cep" placeholder="00000-000" :aria-invalid="!!errors.cep"
-              @input="form.cep = maskCep(($event.target as HTMLInputElement).value)" @blur="lookupCep">
+            <div class="cep"><input maxlength="9" id="cep" class="input" inputmode="numeric" :value="form.cep" placeholder="00000-000" :aria-invalid="!!errors.cep"
+              @input="form.cep = masked($event, maskCep)" @blur="lookupCep">
               <span v-if="cepLoading" class="spinner" /></div>
             <span v-if="errors.cep" class="error">{{ errors.cep }}</span><span v-else class="hint">Preenche o endereço automaticamente.</span></div>
           <div class="field span2"><label for="street">Logradouro<span class="req">*</span></label>

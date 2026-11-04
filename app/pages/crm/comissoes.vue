@@ -179,20 +179,20 @@ function card(status: string) { tab.value = 'comissoes'; f.status = f.status ===
         <span>Projeção das comissões das oportunidades em aberto, caso cheguem à etapa da regra. Enquanto o valor do negócio não é informado, a projeção usa a média da faixa estimada pelo simulador. Nada aqui é devido.</span></div>
       <div class="table-wrap">
         <table class="table">
-          <thead><tr><th>Provedor</th><th>Etapa atual</th><th>Beneficiário</th><th>Regra</th><th>Gera em</th><th class="r">Base</th><th class="r">Previsto</th></tr></thead>
+          <thead><tr><th>Provedor</th><th>Etapa atual</th><th>Beneficiário</th><th>Regra</th><th>Gera em</th><th v-if="auth.isManager.value" class="r">Base</th><th class="r">Previsto</th></tr></thead>
           <tbody>
-            <tr v-if="!forecast.length"><td colspan="7" class="empty">Nenhuma comissão prevista. {{ auth.isManager.value && !rules.some((r) => r.active) ? 'Cadastre as regras na aba Regras.' : '' }}</td></tr>
+            <tr v-if="!forecast.length"><td :colspan="auth.isManager.value ? 7 : 6" class="empty">Nenhuma comissão prevista. {{ auth.isManager.value && !rules.some((r) => r.active) ? 'Cadastre as regras na aba Regras.' : '' }}</td></tr>
             <tr v-for="x in forecast" :key="`${x.opportunity_id}-${x.rule_id}-${x.beneficiary_id}`" class="clickable" @click="navigateTo(`/crm/oportunidades?id=${x.opportunity_id}`)">
               <td class="t-strong">{{ x.opp_name }}</td>
               <td class="small">{{ x.stage }}</td>
               <td>{{ x.beneficiary_name }}<div class="small muted">{{ BENEFICIARY_TYPE_LABEL[x.beneficiary_type] }}</div></td>
               <td class="small">{{ x.rule_name }}</td>
               <td class="small">{{ x.trigger }}</td>
-              <td class="r nowrap">{{ x.base_value === null ? '—' : fmtBRLShort(x.base_value) }}<div v-if="x.estimated" class="small muted">estimativa</div></td>
+              <td v-if="auth.isManager.value" class="r nowrap">{{ x.base_value === null ? '—' : fmtBRLShort(x.base_value) }}<div v-if="x.estimated" class="small muted">estimativa</div></td>
               <td class="r nowrap"><strong class="money">{{ x.amount === null ? '—' : fmtBRL(x.amount) }}</strong></td>
             </tr>
           </tbody>
-          <tfoot v-if="forecast.length"><tr><td colspan="6" class="r small muted">Total previsto</td><td class="r nowrap"><strong>{{ fmtBRL(forecastTotal) }}</strong></td></tr></tfoot>
+          <tfoot v-if="forecast.length"><tr><td :colspan="auth.isManager.value ? 6 : 5" class="r small muted">Total previsto</td><td class="r nowrap"><strong>{{ fmtBRL(forecastTotal) }}</strong></td></tr></tfoot>
         </table>
       </div>
     </template>
@@ -274,7 +274,8 @@ function card(status: string) { tab.value = 'comissoes'; f.status = f.status ===
           <select id="rsrc" v-model="rf.data.source" class="select" :disabled="rf.data.beneficiary_type === 'external'">
             <option value="referral">Indicação (dono do código)</option>
             <option value="assignee">Atendimento (responsável)</option>
-          </select><span v-if="rf.errors.source" class="err">{{ rf.errors.source }}</span></div>
+          </select><span v-if="rf.errors.source" class="err">{{ rf.errors.source }}</span>
+          <span v-else-if="rf.data.beneficiary_type === 'external'" class="hint">Parceiros recebem somente por indicação. Comissão por atendimento é exclusiva da equipe interna.</span></div>
         <div v-if="rf.data.source === 'assignee'" class="field"><label for="rorig">Vale para provedores</label>
           <select id="rorig" v-model="rf.data.referral_origin" class="select"><option v-for="(l, k) in REFERRAL_ORIGIN_LABEL" :key="k" :value="k">{{ l }}</option></select>
           <span class="hint">Ex.: incentivar a equipe a atender as indicações de parceiros externos.</span></div>

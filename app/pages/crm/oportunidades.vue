@@ -256,12 +256,12 @@ const chips = computed(() => [
       <p class="small muted" style="margin-top:0">Use para provedores identificados pela equipe que ainda não se cadastraram no portal. Para provedores já cadastrados, abra o provedor em <NuxtLink to="/crm/provedores">Provedores</NuxtLink>.</p>
       <div class="form-grid">
         <div class="field full"><label for="n-name">Nome do provedor<span class="req">*</span></label><input id="n-name" v-model="nw.prospect_name" class="input" :aria-invalid="!!nwErrors.prospect_name"><span v-if="nwErrors.prospect_name" class="error">{{ nwErrors.prospect_name }}</span></div>
-        <div class="field"><label for="n-cnpj">CNPJ</label><input id="n-cnpj" class="input" :value="nw.prospect_cnpj" inputmode="numeric" :aria-invalid="!!nwErrors.prospect_cnpj" @input="nw.prospect_cnpj = maskDocument(($event.target as HTMLInputElement).value).slice(0, 18)"><span v-if="nwErrors.prospect_cnpj" class="error">{{ nwErrors.prospect_cnpj }}</span><span v-else class="hint">Liga a oportunidade quando ele se cadastrar.</span></div>
+        <div class="field"><label for="n-cnpj">CNPJ</label><input maxlength="18" id="n-cnpj" class="input" :value="nw.prospect_cnpj" inputmode="numeric" :aria-invalid="!!nwErrors.prospect_cnpj" @input="nw.prospect_cnpj = masked($event, maskDocument)"><span v-if="nwErrors.prospect_cnpj" class="error">{{ nwErrors.prospect_cnpj }}</span><span v-else class="hint">Liga a oportunidade quando ele se cadastrar.</span></div>
         <div class="field"><label for="n-base">Clientes (estimativa)</label><input id="n-base" v-model="nw.client_base_estimate" class="input" type="number" min="0"></div>
         <div class="field"><label for="n-city">Cidade</label><input id="n-city" v-model="nw.prospect_city" class="input"></div>
         <div class="field"><label for="n-uf">UF</label><select id="n-uf" v-model="nw.prospect_state" class="select"><option value="">—</option><option v-for="u in UFS" :key="u" :value="u">{{ u }}</option></select></div>
         <div class="field"><label for="n-ct">Contato</label><input id="n-ct" v-model="nw.prospect_contact" class="input"></div>
-        <div class="field"><label for="n-ph">Telefone</label><input id="n-ph" class="input" :value="nw.prospect_phone" @input="nw.prospect_phone = maskPhone(($event.target as HTMLInputElement).value)"></div>
+        <div class="field"><label for="n-ph">Telefone</label><input maxlength="15" id="n-ph" class="input" :value="nw.prospect_phone" @input="nw.prospect_phone = masked($event, maskPhone)"></div>
         <div class="field"><label for="n-em">E-mail</label><input id="n-em" v-model="nw.prospect_email" class="input" type="email"></div>
         <div class="field"><label for="n-st">Etapa inicial</label><select id="n-st" v-model="nw.stage_key" class="select"><option value="isp_identificado">ISP identificado</option><option value="primeiro_contato">Primeiro contato</option></select></div>
         <template v-if="auth.isManager.value">
