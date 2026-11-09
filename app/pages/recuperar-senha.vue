@@ -9,7 +9,10 @@ const toast = useToast()
 onMounted(() => pc.load())
 
 const invite = computed(() => route.query.convite === '1')
-const step = ref<'request' | 'reset' | 'done'>(route.query.email ? 'reset' : 'request')
+// Vai direto para o código só quando vem do link do e-mail (etapa=codigo ou convite).
+// Pela tela de login, o e-mail apenas é preenchido e o código ainda precisa ser solicitado.
+const fromEmailLink = !!route.query.email && (route.query.etapa === 'codigo' || route.query.convite === '1')
+const step = ref<'request' | 'reset' | 'done'>(fromEmailLink ? 'reset' : 'request')
 const email = ref(String(route.query.email ?? ''))
 const code = ref('')
 const password = ref('')
