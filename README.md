@@ -8,6 +8,15 @@ Backend: **Supabase** (banco, autenticação e Edge Function `api`).
 
 ## Fases entregues: 1 a 7 (Fundação, Simulador, Equipe e parceiros, CRM e funil, Reuniões, Comissões, Painel e relatórios)
 
+**Limite mensal de simulações (nov/2026):** cada login é um provedor e pode simular 3 vezes por mês; o domínio
+do e-mail soma até 6 (em e-mails gratuitos, conta por CNPJ). Zera no dia 1º. Ao travar, o provedor é levado a
+formalizar uma das simulações e vê o contato da equipe. O admin libera +1 simulação na ficha do provedor no CRM,
+com motivo (auditado). Limites e lista de domínios gratuitos em Configurações → Limite de simulações.
+
+**Link de indicação protegido (nov/2026):** o link compartilhado leva uma chave aleatória (`?i=…`) em vez
+do código; a página tira a chave da barra de endereço, e no cadastro do provedor a indicação aparece travada,
+sem mostrar o código. O provedor nunca vê o código no portal. Trocar o código não invalida links já enviados.
+
 **Simulador — composição da equipe (nov/2026):** em uma linha, o provedor informa total de colaboradores,
 % CLT, % PJ (calculado), salário médio CLT e honorário médio PJ. O % CLT tem faixas editáveis (iniciais:
 0–50%, 50–70%, 70–90%, 90–100%); salário e honorário médios têm faixas com peso definido pela gestão em

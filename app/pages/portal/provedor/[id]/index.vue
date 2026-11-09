@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import type { OwnerQuota } from '~/components/QuotaNotice.vue'
 import type { IspStatus, SimStatus } from '~/utils/labels'
 import type { OwnerResultData } from '~/utils/simulator'
 definePageMeta({ layout: 'portal', roles: ['isp_owner'] })
 useHead({ title: 'Meu provedor · DealSourcing' })
 
-interface Isp { id: string; legal_name: string; trade_name: string; cnpj: string; email: string; phone: string; responsible_name: string; cep: string | null; street: string; number: string; complement: string | null; district: string; city: string; state: string; region: string; referral_code: string | null; status: IspStatus; created_at: string }
+interface Isp { id: string; legal_name: string; trade_name: string; cnpj: string; email: string; phone: string; responsible_name: string; cep: string | null; street: string; number: string; complement: string | null; district: string; city: string; state: string; region: string; has_referral: boolean; status: IspStatus; created_at: string }
 interface Sim { id: string; client_base: number; cities: string[]; region: string; status: SimStatus; formalized_at: string | null; created_at: string; result: OwnerResultData | null }
 
 const route = useRoute()
@@ -14,6 +15,7 @@ const id = String(route.params.id)
 const isp = ref<Isp | null>(null)
 const sims = ref<Sim[]>([])
 const showValue = ref(false)
+const quota = ref<OwnerQuota | null>(null)
 interface PortalMeeting { id: string; title: string; status: string; starts_at: string | null; duration_min: number; mode: string; address: string | null; meeting_url: string | null; organizer: { full_name: string; email: string; phone: string | null } | null }
 const meetings = ref<PortalMeeting[]>([])
 const upcomingMeetings = computed(() => meetings.value.filter((m) => ['agendada', 'confirmada', 'reagendada', 'aguardando_agendamento'].includes(m.status)))
@@ -24,7 +26,7 @@ const confirming = ref<Sim | null>(null)
 const busy = ref(false)
 
 async function load() {
-  try { const r = await api.get<{ isp: Isp; simulations: Sim[]; show_value: boolean; meetings: PortalMeeting[] }>(`/isp/companies/${id}`); isp.value = r.isp; sims.value = r.simulations; showValue.value = r.show_value; meetings.value = r.meetings ?? [] }
+  try { const r = await api.get<{ isp: Isp; simulations: Sim[]; show_value: boolean; meetings: PortalMeeting[]; quota?: OwnerQuota }>(`/isp/companies/${id}`); isp.value = r.isp; quota.value = r.quota ?? null; sims.value = r.simulations; showValue.value = r.show_value; meetings.value = r.meetings ?? [] }
   catch (e) { toast.error(errorMessage(e)); await navigateTo('/portal') } finally { loading.value = false }
 }
 onMounted(load)
@@ -52,8 +54,14 @@ async function formalize() {
           <h1>{{ isp.trade_name }}</h1>
           <p>{{ isp.legal_name }} · CNPJ {{ fmtDocument(isp.cnpj) }}</p>
         </div>
-        <NuxtLink :to="`/portal/provedor/${isp.id}/simular`" class="btn btn-lg"><AppIcon name="chart" :size="18" /> Nova simulação</NuxtLink>
+        <div class="sim-cta">
+          <NuxtLink v-if="!quota?.blocked" :to="`/portal/provedor/${isp.id}/simular`" class="btn btn-lg"><AppIcon name="chart" :size="18" /> Nova simulação</NuxtLink>
+          <span v-else class="btn btn-lg disabled" aria-disabled="true"><AppIcon name="lock" :size="18" /> Limite do mês atingido</span>
+          <span v-if="quota" class="small muted">{{ quota.used }} de {{ quota.limit }} simulações usadas neste mês</span>
+        </div>
       </div>
+      <div v-if="quota?.blocked" class="alert info small" style="margin-bottom:1rem"><AppIcon name="info" :size="18" />
+        <span>Você usou todas as simulações deste mês. <b>Escolha abaixo a melhor simulação e formalize o interesse</b>. Novas simulações em {{ fmtDay(quota.resets_at) }}.</span></div>
 
       <div class="layout">
         <article class="card">
@@ -112,7 +120,7 @@ async function formalize() {
               <dt>Telefone</dt><dd>{{ fmtPhone(isp.phone) }}</dd>
               <dt>Endereço</dt><dd>{{ isp.street }}, {{ isp.number }}<template v-if="isp.complement"> · {{ isp.complement }}</template><br>{{ isp.district }} · {{ isp.city }}/{{ isp.state }}<template v-if="isp.cep"><br>CEP {{ maskCep(isp.cep) }}</template></dd>
               <dt>Região</dt><dd>{{ REGION_LABEL[isp.region] ?? isp.region }}</dd>
-              <dt>Código de indicação</dt><dd><span class="mono">{{ isp.referral_code ?? '—' }}</span></dd>
+              <dt>Indicação</dt><dd>{{ isp.has_referral ? 'Registrada' : 'Sem indicação' }}</dd>
               <dt>Cadastrado em</dt><dd>{{ fmtDate(isp.created_at) }}</dd>
             </dl>
           </div>
@@ -155,4 +163,7 @@ async function formalize() {
 .link-btn { background: none; border: 0; padding: 0; color: var(--blue); font: 500 .8rem var(--font-body); cursor: pointer; text-decoration: underline; }
 .note { padding: 0 1.4rem 1.2rem; margin: .9rem 0 0; }
 @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } }
+.sim-cta { display: grid; gap: .35rem; justify-items: end; }
+.btn.disabled { opacity: .55; pointer-events: none; }
+@media (max-width: 640px) { .sim-cta { justify-items: start; } }
 </style>

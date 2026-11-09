@@ -7,7 +7,11 @@ const toast = useToast()
 const route = useRoute()
 const { profile } = useAuth()
 
-const storedRef = (() => { try { return localStorage.getItem('ds_ref') ?? '' } catch { return '' } })()
+const stored = (k: string) => { try { return localStorage.getItem(k) ?? '' } catch { return '' } }
+const storedRef = stored('ds_ref')
+/** Chegou pelo link de indicação: a chave vai para a API e o campo fica travado, sem mostrar o código. */
+const linkToken = ref(/^[a-f0-9]{32}$/.test(stored('ds_ref_token')) ? stored('ds_ref_token') : '')
+const lockedByLegacyLink = !!storedRef && !linkToken.value
 const form = reactive({
   legal_name: '', trade_name: '', cnpj: '', email: profile.value?.email ?? '', phone: maskPhone(profile.value?.phone ?? ''),
   responsible_name: profile.value?.full_name ?? '', cep: '', street: '', number: '', complement: '', district: '',
@@ -22,7 +26,14 @@ for (const k of Object.keys(form) as (keyof typeof form)[]) watch(() => form[k],
 
 onMounted(async () => {
   try { required.value = (await api.get<{ referral_required: boolean }>('/isp/form-config')).referral_required } catch { /* usa padrão */ }
-  if (form.referral_code) checkRef()
+  if (linkToken.value) {
+    refStatus.value = { state: 'checking' }
+    try {
+      const r = await api.get<{ valid: boolean; owner_first_name?: string | null }>('/public/referral-link', { i: linkToken.value })
+      if (r.valid) refStatus.value = { state: 'ok', owner: r.owner_first_name }
+      else { linkToken.value = ''; refStatus.value = { state: 'idle' }; try { localStorage.removeItem('ds_ref_token') } catch { /* ignora */ } }
+    } catch { refStatus.value = { state: 'idle' } }
+  } else if (form.referral_code) checkRef()
 })
 
 async function checkRef() {
@@ -66,7 +77,7 @@ function validate() {
   if (!form.district.trim()) errors.district = 'Informe o bairro.'
   if (!form.city.trim()) errors.city = 'Informe a cidade.'
   if (!form.state) errors.state = 'Selecione o estado.'
-  if (required.value && !form.referral_code.trim()) errors.referral_code = 'Informe o código de indicação.'
+  if (required.value && !linkToken.value && !form.referral_code.trim()) errors.referral_code = 'Informe o código de indicação.'
   if (refStatus.value.state === 'bad') errors.referral_code = 'Código de indicação não encontrado.'
   return !Object.keys(errors).length
 }
@@ -78,12 +89,18 @@ async function submit() {
   try {
     const r = await api.post<{ isp: { id: string } }>('/isp/companies', {
       ...form, cnpj: onlyDigits(form.cnpj), phone: onlyDigits(form.phone), cep: onlyDigits(form.cep),
+      ...(linkToken.value ? { referral_code: '', referral_token: linkToken.value } : {}),
     })
-    try { localStorage.removeItem('ds_ref') } catch { /* ignora */ }
+    try { localStorage.removeItem('ds_ref'); localStorage.removeItem('ds_ref_token') } catch { /* ignora */ }
     toast.success('Provedor cadastrado. Agora você já pode simular.')
     await navigateTo(`/portal/provedor/${r.isp.id}/simular`)
   } catch (e) {
-    if (e instanceof ApiError && e.data.errors) Object.assign(errors, e.data.errors as Record<string, string>)
+    if (e instanceof ApiError && e.data.errors) {
+      const errs = e.data.errors as Record<string, string>
+      // link expirado: libera o campo para digitar um código
+      if (linkToken.value && errs.referral_code) { linkToken.value = ''; refStatus.value = { state: 'idle' }; try { localStorage.removeItem('ds_ref_token') } catch { /* ignora */ } }
+      Object.assign(errors, errs)
+    }
     serverError.value = errorMessage(e)
   } finally { loading.value = false }
 }
@@ -160,12 +177,17 @@ async function submit() {
       </article>
 
       <article class="card">
-        <div class="card-head"><h2>Código de indicação</h2></div>
+        <div class="card-head"><h2>Indicação</h2></div>
         <div class="card-body">
-          <div class="field ref-field">
+          <div v-if="linkToken" class="locked">
+            <AppIcon name="lock" :size="20" />
+            <div><strong>Indicação registrada pelo link{{ refStatus.owner ? ` de ${refStatus.owner}` : '' }}</strong>
+              <div class="small muted">Você entrou pelo link de quem apresentou a NOVALE. A indicação fica vinculada automaticamente e não pode ser alterada.</div></div>
+          </div>
+          <div v-else class="field ref-field">
             <label for="ref">Código de quem indicou a NOVALE para você<span v-if="required" class="req">*</span></label>
             <input id="ref" v-model="form.referral_code" class="input code-input" maxlength="20" placeholder="Ex.: DS7K3Q9P"
-              :aria-invalid="!!errors.referral_code" @blur="checkRef">
+              :readonly="lockedByLegacyLink" :aria-invalid="!!errors.referral_code" @blur="checkRef">
             <span v-if="errors.referral_code" class="error">{{ errors.referral_code }}</span>
             <span v-else-if="refStatus.state === 'checking'" class="hint">Verificando…</span>
             <span v-else-if="refStatus.state === 'ok'" class="ok"><AppIcon name="check" :size="14" :stroke="2.4" /> Código válido{{ refStatus.owner ? ` · indicação de ${refStatus.owner}` : '' }}</span>
@@ -195,4 +217,6 @@ async function submit() {
 .code-input { font: 700 1.1rem var(--font-head); letter-spacing: .1em; text-transform: uppercase; }
 .ok { font-size: .8rem; color: var(--success); font-weight: 600; display: inline-flex; align-items: center; gap: .3rem; }
 @media (max-width: 700px) { .addr { grid-template-columns: 1fr 1fr; } .addr .span2 { grid-column: 1 / -1; } }
+.locked { display: flex; gap: .8rem; align-items: flex-start; padding: .9rem 1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--tint); }
+.locked :deep(svg) { color: var(--blue); flex: none; margin-top: .1rem; }
 </style>

@@ -21,6 +21,8 @@ interface Detail {
   simulations: Sim[]; formalizations: { id: string; simulation_id: string; formalized_at: string }[];
   opportunity: { id: string; stage_key: string; stage: { name: string } | null; in_queue: boolean; formalizations_count: number; first_formalized_at: string | null; last_formalized_at: string | null } | null;
   attributions: { code: string | null; owner_type: string | null; is_current: boolean; reason: string | null; attributed_at: string; owner: { full_name: string } | null }[]
+  quota: { user_used: number; user_limit: number; group_used: number; group_limit: number; group_type: 'domain' | 'cnpj'; group_key: string; grants: number; blocked: boolean; scope: 'user' | 'group' | null; resets_at: string } | null
+  grants: { id: string; extra: number; reason: string; period: string; created_at: string; author: { full_name: string } | null }[]
 }
 
 const api = useApi()
@@ -77,6 +79,18 @@ async function createOpp() {
     toast.success('Oportunidade criada no funil.')
     await navigateTo(`/crm/oportunidades?id=${r.id}`)
   } catch (e) { toast.error(errorMessage(e)) } finally { creatingOpp.value = false }
+}
+const grantForm = reactive({ open: false, reason: '', busy: false, error: '' })
+async function grantSimulation() {
+  grantForm.error = ''
+  if (grantForm.reason.trim().length < 3) { grantForm.error = 'Informe o motivo.'; return }
+  grantForm.busy = true
+  try {
+    await api.post(`/crm/isps/${detail.value!.isp.id}/simulation-grant`, { reason: grantForm.reason.trim() })
+    toast.success('Simulação liberada. O provedor foi avisado.')
+    Object.assign(grantForm, { open: false, reason: '' })
+    detail.value = await api.get<Detail>(`/crm/isps/${detail.value!.isp.id}`)
+  } catch (e) { grantForm.error = errorMessage(e) } finally { grantForm.busy = false }
 }
 function close() { refForm.open = false; detailOpen.value = false; if (route.query.id) router.replace({ query: { ...route.query, id: undefined } }) }
 </script>
@@ -155,6 +169,29 @@ function close() { refForm.open = false; detailOpen.value = false; if (route.que
             <dt>Conta do portal</dt><dd>{{ detail.isp.owner?.full_name }} · {{ detail.isp.owner?.email }}</dd>
             <dt>Cadastro</dt><dd>{{ fmtDateTime(detail.isp.created_at) }}</dd>
           </dl>
+        </section>
+
+        <section v-if="detail.quota" class="box">
+          <div class="row between"><div class="eyebrow" style="margin:0">Simulações neste mês</div>
+            <span class="badge" :class="detail.quota.blocked ? 'danger' : 'success'">{{ detail.quota.blocked ? 'Bloqueado' : 'Liberado' }}</span></div>
+          <dl class="dl">
+            <dt>Este provedor</dt><dd><b>{{ detail.quota.user_used }}</b> de {{ detail.quota.user_limit }}</dd>
+            <dt>{{ detail.quota.group_type === 'domain' ? 'Domínio' : 'CNPJ (e-mail gratuito)' }}</dt>
+            <dd><b>{{ detail.quota.group_used }}</b> de {{ detail.quota.group_limit }} · <span class="mono small">{{ detail.quota.group_type === 'domain' ? '@' + detail.quota.group_key.replace('domain:', '') : fmtDocument(detail.quota.group_key.replace('cnpj:', '')) }}</span></dd>
+            <template v-if="detail.quota.blocked"><dt>Motivo</dt><dd>{{ detail.quota.scope === 'user' ? 'Limite do provedor atingido' : 'Limite do domínio atingido' }} · zera em {{ fmtDay(detail.quota.resets_at) }}</dd></template>
+            <template v-if="detail.grants.length"><dt>Liberações</dt><dd>
+              <div v-for="g in detail.grants" :key="g.id" class="small">+{{ g.extra }} em {{ fmtDateTime(g.created_at) }} · {{ g.author?.full_name ?? '—' }} · {{ g.reason }}</div></dd></template>
+          </dl>
+          <button v-if="auth.isAdmin.value && !grantForm.open" class="btn btn-outline btn-sm" style="margin-top:.75rem" @click="grantForm.open = true">
+            <AppIcon name="plus" :size="16" /> Liberar mais 1 simulação</button>
+          <div v-if="grantForm.open" class="ref-form stack">
+            <div class="field"><label for="gr">Motivo<span class="req">*</span></label>
+              <input id="gr" v-model="grantForm.reason" class="input" maxlength="300" placeholder="Ex.: revisão dos dados com o sócio"></div>
+            <p class="small muted" style="margin:0">Vale até o fim deste mês e soma 1 ao limite do provedor e do domínio. Fica registrado na auditoria.</p>
+            <div v-if="grantForm.error" class="alert danger small"><AppIcon name="alert" :size="18" /> {{ grantForm.error }}</div>
+            <div class="row end"><button class="btn btn-ghost btn-sm" @click="grantForm.open = false">Cancelar</button>
+              <button class="btn btn-sm" :disabled="grantForm.busy" @click="grantSimulation">Liberar</button></div>
+          </div>
         </section>
 
         <section class="box">

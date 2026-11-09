@@ -5,13 +5,28 @@ useHead({ title: 'DealSourcing · Avaliação e aquisição de provedores de int
 const pc = usePublicConfig()
 const auth = useAuth()
 const route = useRoute()
-onMounted(() => {
+const api = useApi()
+const router = useRouter()
+onMounted(async () => {
   pc.load(); auth.init()
-  // Link de indicação (?ref=CÓDIGO): guarda o código para o cadastro do provedor
-  const ref = String(route.query.ref ?? '').trim().toUpperCase()
-  if (/^[A-Z0-9-]{4,20}$/.test(ref)) { try { localStorage.setItem('ds_ref', ref) } catch { /* ignora */ } refCode.value = ref }
+  // Link de indicação (?i=CHAVE): guarda a chave para o cadastro do provedor. O código não aparece no link nem na tela.
+  const token = String(route.query.i ?? '').trim().toLowerCase()
+  const legacy = String(route.query.ref ?? '').trim().toUpperCase()   // links antigos (?ref=CÓDIGO)
+  if (token || legacy) router.replace({ query: {} })                  // tira a chave da barra de endereço
+  if (/^[a-f0-9]{32}$/.test(token)) {
+    try {
+      const r = await api.get<{ valid: boolean; owner_first_name?: string | null }>('/public/referral-link', { i: token })
+      if (r.valid) {
+        try { localStorage.setItem('ds_ref_token', token); localStorage.removeItem('ds_ref') } catch { /* ignora */ }
+        refNote.value = r.owner_first_name ? `Você chegou pela indicação de ${r.owner_first_name}` : 'Você chegou por uma indicação'
+      }
+    } catch { /* segue sem indicação */ }
+  } else if (/^[A-Z0-9-]{4,20}$/.test(legacy)) {
+    try { localStorage.setItem('ds_ref', legacy); localStorage.removeItem('ds_ref_token') } catch { /* ignora */ }
+    refNote.value = 'Você chegou por uma indicação'
+  }
 })
-const refCode = ref('')
+const refNote = ref('')
 
 const ispOn = computed(() => pc.setting('signup_isp_enabled', true))
 const partnerOn = computed(() => pc.setting('signup_partner_enabled', true))
@@ -50,7 +65,7 @@ const steps = [
       <BrandLogo class="hero-sphere" variant="branca" symbol :height="720" />
       <div class="wrap hero-in">
         <ProductName dark :size="22" class="hero-product" />
-        <div v-if="refCode" class="ref-note"><AppIcon name="handshake" :size="16" /> Você chegou por uma indicação · código <b>{{ refCode }}</b></div>
+        <div v-if="refNote" class="ref-note"><AppIcon name="handshake" :size="16" /> {{ refNote }}</div>
         <div class="eyebrow light">M&amp;A para provedores regionais de internet</div>
         <h1>Seu provedor tem valor.<br>Descubra o caminho para uma aquisição segura.</h1>
         <p class="lead">O DealSourcing, da NOVALE, conecta proprietários de ISPs a um processo estruturado de avaliação, negociação e aquisição — com sigilo, método e acompanhamento especializado.</p>

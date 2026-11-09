@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { OwnerResultData } from '~/utils/simulator'
+import type { OwnerQuota } from '~/components/QuotaNotice.vue'
 definePageMeta({ layout: 'portal', roles: ['isp_owner'] })
 useHead({ title: 'Simulador · DealSourcing' })
 
@@ -18,6 +19,7 @@ const simId = ref('')
 const result = ref<OwnerResultData | null>(null)
 const busy = ref(false)
 const confirmOpen = ref(false)
+const quota = ref<OwnerQuota | null>(null)
 
 const f = reactive({
   cnpj: '', address: '', responsible_name: '', email: '', phone: '',
@@ -41,10 +43,10 @@ for (const k of Object.keys(f) as (keyof typeof f)[]) watch(() => f[k], () => { 
 onMounted(async () => {
   try {
     const [r, c] = await Promise.all([
-      api.get<{ isp: Isp }>(`/isp/companies/${id}`),
+      api.get<{ isp: Isp; quota: OwnerQuota }>(`/isp/companies/${id}`),
       api.get<FormCfg>('/isp/form-config'),
     ])
-    isp.value = r.isp; cfg.value = c
+    isp.value = r.isp; cfg.value = c; quota.value = r.quota ?? null
     const i = r.isp
     Object.assign(f, {
       cnpj: fmtDocument(i.cnpj),
@@ -88,7 +90,7 @@ async function simulate() {
   if (!validate()) { toast.warning('Revise os campos destacados.'); document.querySelector('[aria-invalid="true"]')?.scrollIntoView({ block: 'center', behavior: 'smooth' }); return }
   busy.value = true
   try {
-    const r = await api.post<{ simulation: { id: string }; result: OwnerResultData | null }>(`/isp/companies/${id}/simulations`, {
+    const r = await api.post<{ simulation: { id: string }; result: OwnerResultData | null; quota?: OwnerQuota }>(`/isp/companies/${id}/simulations`, {
       cnpj: onlyDigits(f.cnpj), address: f.address, responsible_name: f.responsible_name, email: f.email,
       phone: onlyDigits(f.phone), client_base: Number(f.client_base), cities: f.cities, region: f.region,
       regularized: f.regularized, poles_valid_pct: Number(f.poles_valid_pct),
@@ -99,9 +101,11 @@ async function simulate() {
     })
     simId.value = r.simulation.id
     result.value = r.result
+    if (r.quota) quota.value = r.quota
     step.value = 'done'
     window.scrollTo({ top: 0, behavior: 'smooth' })
   } catch (e) {
+    if (e instanceof ApiError && e.code === 'simulation_limit' && e.data.quota) { quota.value = e.data.quota as OwnerQuota; window.scrollTo({ top: 0, behavior: 'smooth' }); return }
     if (e instanceof ApiError && e.data.errors) Object.assign(errors, e.data.errors as Record<string, string>)
     toast.error(errorMessage(e))
   } finally { busy.value = false }
@@ -129,12 +133,15 @@ function again() {
     <NuxtLink :to="`/portal/provedor/${id}`" class="back"><AppIcon name="arrow-left" :size="16" /> {{ isp?.trade_name ?? 'Provedor' }}</NuxtLink>
     <div v-if="loading" class="empty"><span class="spinner" /></div>
 
+    <QuotaNotice v-else-if="step === 'form' && quota?.blocked && isp" :quota="quota" :isp-id="id" mode="blocked" />
+
     <template v-else-if="step === 'form' && isp && cfg">
       <div class="page-head">
         <div><div class="eyebrow">Simulador DealSourcing</div><h1>Avaliação preliminar do provedor</h1>
           <p>Preencha as informações da operação. Os dados são confidenciais e usados apenas pela equipe NOVALE.</p></div>
       </div>
 
+      <QuotaNotice v-if="quota" :quota="quota" :isp-id="id" mode="banner" style="margin-bottom:1rem" />
       <form class="stack" novalidate @submit.prevent="simulate">
         <article class="card">
           <div class="card-head"><h2><span class="n">1–5</span> Identificação</h2></div>
@@ -237,8 +244,14 @@ function again() {
         </div>
         <div class="opt-card">
           <AppIcon name="refresh" :size="22" />
-          <div><strong>Quer ajustar alguma informação?</strong><p class="small muted">Faça uma nova simulação. Os dados atuais ficam preenchidos para você alterar.</p></div>
-          <button class="btn btn-outline" @click="again">Fazer nova simulação</button>
+          <template v-if="!quota || quota.remaining > 0">
+            <div><strong>Quer ajustar alguma informação?</strong><p class="small muted">Faça uma nova simulação. Os dados atuais ficam preenchidos para você alterar.<template v-if="quota"> Restam {{ quota.remaining }} neste mês.</template></p></div>
+            <button class="btn btn-outline" @click="again">Fazer nova simulação</button>
+          </template>
+          <template v-else>
+            <div><strong>Simulações do mês encerradas</strong><p class="small muted">Você usou as {{ quota.limit }} simulações deste mês. Compare-as no histórico e formalize a que preferir.</p></div>
+            <NuxtLink :to="`/portal/provedor/${id}`" class="btn btn-outline">Comparar minhas simulações</NuxtLink>
+          </template>
         </div>
       </div>
       <NuxtLink :to="`/portal/provedor/${id}`" class="small">Ver histórico de simulações</NuxtLink>

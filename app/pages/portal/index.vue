@@ -31,9 +31,7 @@ const contactPhone = computed(() => String(pc.setting('contact_phone', '')))
         <p>{{ isIsp
           ? 'Cadastre seu provedor, faça simulações e formalize seu interesse quando quiser conversar com nossa equipe.'
           : 'Compartilhe seu código de indicação com provedores e acompanhe o andamento de cada indicação.' }}</p>
-        <NuxtLink v-if="isIsp && isps.length" to="/portal/provedor/novo" class="btn btn-white" style="margin-top:1.1rem">
-          <AppIcon name="plus" :size="18" /> Cadastrar outro provedor
-        </NuxtLink>
+        
       </div>
     </section>
 

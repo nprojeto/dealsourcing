@@ -1,5 +1,5 @@
 <script setup lang="ts">
-interface Referral { code: string | null; link: string | null; stats?: { isps: number; simulations: number; formalizations: number } }
+interface Referral { code: string | null; link: string | null; link_token?: string | null; stats?: { isps: number; simulations: number; formalizations: number } }
 const api = useApi()
 const toast = useToast()
 const data = ref<Referral | null>(null)
@@ -10,7 +10,7 @@ onMounted(async () => {
 const shareLink = computed(() => {
   if (!data.value?.code) return ''
   if (data.value.link) return data.value.link
-  return `${window.location.origin}${useRuntimeConfig().app.baseURL}#/?ref=${data.value.code}`
+  return data.value.link_token ? `${window.location.origin}${useRuntimeConfig().app.baseURL}#/?i=${data.value.link_token}` : ''
 })
 async function copy(text: string, what: string) {
   try { await navigator.clipboard.writeText(text); toast.success(`${what} copiado.`) }
@@ -28,7 +28,7 @@ async function copy(text: string, what: string) {
           <span class="code">{{ data.code }}</span>
           <button class="btn btn-outline btn-sm" @click="copy(data.code!, 'Código')"><AppIcon name="file" :size="16" /> Copiar código</button>
         </div>
-        <p class="small muted">O provedor informa este código no cadastro, ou acessa pelo seu link, que já preenche o código automaticamente.</p>
+        <p class="small muted">O provedor pode informar este código no cadastro ou entrar pelo seu link. Pelo link, o código não aparece e a indicação fica travada no cadastro, sem possibilidade de troca.</p>
         <div class="link-row">
           <input class="input small" :value="shareLink" readonly aria-label="Link de indicação" @focus="($event.target as HTMLInputElement).select()">
           <button class="btn btn-sm" @click="copy(shareLink, 'Link')"><AppIcon name="send" :size="16" /> Copiar link</button>
