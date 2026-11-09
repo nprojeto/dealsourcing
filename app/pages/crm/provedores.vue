@@ -13,6 +13,8 @@ interface Row {
 interface Sim {
   id: string; created_at: string; status: SimStatus; formalized_at: string | null; client_base: number; cities: string[]; region: string;
   regularized: string; poles_valid_pct: number; technicians_count: number; employees_count: number; employment_type: string; arpu: number;
+  clt_pct: number | null; pj_avg_fee: number | null; pj_weekly_hours: number | null; pj_days_week: number | null;
+  pj_shift: string | null; pj_invoice: string | null; pj_contract_months: number | null; pj_notes: string | null;
   address: string; responsible_name: string; email: string; phone: string; result: SimResult | null; version: { version: number } | null
 }
 interface Detail {
@@ -204,7 +206,12 @@ function close() { refForm.open = false; detailOpen.value = false; if (route.que
                 <dt>Região</dt><dd>{{ REGION_LABEL[s.region] }}</dd>
                 <dt>Regularização</dt><dd>{{ s.regularized === 'SIM' ? 'Sim' : 'Não' }}</dd>
                 <dt>Postes válidos</dt><dd>{{ Number(s.poles_valid_pct).toLocaleString('pt-BR') }}%</dd>
-                <dt>Equipe</dt><dd>{{ s.technicians_count }} técnicos · {{ s.employees_count }} funcionários · {{ s.employment_type }}</dd>
+                <dt>Equipe</dt><dd>{{ s.technicians_count }} técnicos · {{ s.employees_count }} funcionários · {{ teamMix(s) }}</dd>
+                <template v-if="s.pj_avg_fee !== null && s.pj_avg_fee !== undefined">
+                  <dt>Contratos PJ</dt><dd>Honorário médio {{ fmtBRL(s.pj_avg_fee) }} · {{ Number(s.pj_weekly_hours).toLocaleString('pt-BR') }} h/semana · {{ s.pj_days_week }} dias/semana
+                    · escala: {{ YES_NO_PARTIAL[s.pj_shift ?? ''] }} · nota fiscal: {{ YES_NO_PARTIAL[s.pj_invoice ?? ''] }} · contrato médio de {{ s.pj_contract_months }} meses</dd>
+                  <template v-if="s.pj_notes"><dt>Outras características</dt><dd>{{ s.pj_notes }}</dd></template>
+                </template>
                 <dt>ARPU</dt><dd>{{ fmtBRL(s.arpu) }}</dd>
                 <dt>Informado por</dt><dd>{{ s.responsible_name }} · {{ s.email }} · {{ fmtPhone(s.phone) }}</dd>
                 <dt>Endereço</dt><dd>{{ s.address }}</dd>

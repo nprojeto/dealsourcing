@@ -4,7 +4,7 @@ definePageMeta({ layout: 'portal', roles: ['isp_owner'] })
 useHead({ title: 'Simulador · DealSourcing' })
 
 interface Isp { id: string; trade_name: string; legal_name: string; cnpj: string; email: string; phone: string; responsible_name: string; cep: string | null; street: string; number: string; complement: string | null; district: string; city: string; state: string; region: string }
-interface FormCfg { regions: { code: string; name: string; states: string[] }[]; regularized_options: { value: string; label: string }[]; employment_options: { value: string; label: string }[] }
+interface FormCfg { regions: { code: string; name: string; states: string[] }[]; regularized_options: { value: string; label: string }[]; pj_shift_options: { value: string; label: string }[]; pj_invoice_options: { value: string; label: string }[] }
 
 const route = useRoute()
 const api = useApi()
@@ -23,8 +23,13 @@ const f = reactive({
   cnpj: '', address: '', responsible_name: '', email: '', phone: '',
   client_base: '' as string | number, cities: [] as string[], region: '',
   regularized: '', poles_valid_pct: '' as string | number, technicians_count: '' as string | number,
-  employees_count: '' as string | number, employment_type: '', arpu: '' as string | number,
+  employees_count: '' as string | number, clt_pct: '' as string | number, arpu: '' as string | number,
+  pj_avg_fee: '' as string | number, pj_weekly_hours: '' as string | number, pj_days_week: '' as string | number,
+  pj_shift: '', pj_invoice: '', pj_contract_months: '' as string | number, pj_notes: '',
 })
+const decimal = (v: string | number) => Number(String(v).replace(',', '.'))
+/** O bloco de contratos PJ só aparece quando a equipe não é 100% CLT. */
+const hasPj = computed(() => f.clt_pct !== '' && Number.isFinite(decimal(f.clt_pct)) && decimal(f.clt_pct) < 100)
 const errors = reactive<Record<string, string>>({})
 for (const k of Object.keys(f) as (keyof typeof f)[]) watch(() => f[k], () => { delete errors[k] }, { deep: true })
 
@@ -65,7 +70,17 @@ function validate() {
   if (f.technicians_count === '' || !Number.isInteger(tech) || tech < 0) errors.technicians_count = 'Informe a quantidade de técnicos.'
   if (f.employees_count === '' || !Number.isInteger(emp) || emp < 0) errors.employees_count = 'Informe o total de funcionários.'
   else if (!errors.technicians_count && emp < tech) errors.employees_count = 'O total deve incluir os técnicos.'
-  if (!f.employment_type) errors.employment_type = 'Selecione o vínculo.'
+  const clt = decimal(f.clt_pct)
+  if (f.clt_pct === '' || !Number.isFinite(clt) || clt < 0 || clt > 100) errors.clt_pct = 'Percentual entre 0 e 100.'
+  if (hasPj.value) {
+    const fee = decimal(f.pj_avg_fee), hours = decimal(f.pj_weekly_hours), days = Number(f.pj_days_week), months = Number(f.pj_contract_months)
+    if (!Number.isFinite(fee) || fee <= 0) errors.pj_avg_fee = 'Informe o honorário médio mensal.'
+    if (!Number.isFinite(hours) || hours <= 0 || hours > 168) errors.pj_weekly_hours = 'Informe as horas semanais.'
+    if (!Number.isInteger(days) || days < 1 || days > 7) errors.pj_days_week = 'De 1 a 7 dias.'
+    if (!f.pj_shift) errors.pj_shift = 'Selecione uma opção.'
+    if (!f.pj_invoice) errors.pj_invoice = 'Selecione uma opção.'
+    if (f.pj_contract_months === '' || !Number.isInteger(months) || months < 0) errors.pj_contract_months = 'Informe o tempo médio em meses.'
+  }
   const arpu = Number(String(f.arpu).replace(',', '.'))
   if (!Number.isFinite(arpu) || arpu <= 0) errors.arpu = 'Informe o valor médio mensal em reais.'
   return !Object.keys(errors).length
@@ -80,7 +95,11 @@ async function simulate() {
       phone: onlyDigits(f.phone), client_base: Number(f.client_base), cities: f.cities, region: f.region,
       regularized: f.regularized, poles_valid_pct: Number(f.poles_valid_pct),
       technicians_count: Number(f.technicians_count), employees_count: Number(f.employees_count),
-      employment_type: f.employment_type, arpu: Number(String(f.arpu).replace(',', '.')),
+      clt_pct: decimal(f.clt_pct), arpu: decimal(f.arpu),
+      ...(hasPj.value ? {
+        pj_avg_fee: decimal(f.pj_avg_fee), pj_weekly_hours: decimal(f.pj_weekly_hours), pj_days_week: Number(f.pj_days_week),
+        pj_shift: f.pj_shift, pj_invoice: f.pj_invoice, pj_contract_months: Number(f.pj_contract_months), pj_notes: f.pj_notes.trim(),
+      } : {}),
     })
     simId.value = r.simulation.id
     result.value = r.result
@@ -176,14 +195,44 @@ function again() {
             <div class="field"><label for="emp">Total de funcionários<span class="req">*</span></label>
               <input id="emp" v-model="f.employees_count" class="input" type="number" min="0" step="1" inputmode="numeric" :aria-invalid="!!errors.employees_count">
               <span v-if="errors.employees_count" class="error">{{ errors.employees_count }}</span><span v-else class="hint">Incluindo os técnicos.</span></div>
-            <div class="field"><span class="label">Tipo de vínculo empregatício<span class="req">*</span></span>
-              <SegmentedControl v-model="f.employment_type" name="employment" :options="cfg.employment_options" :invalid="!!errors.employment_type" />
-              <span v-if="errors.employment_type" class="error">{{ errors.employment_type }}</span><span v-else class="hint">Vínculo predominante da equipe.</span></div>
+            <div class="field"><label for="clt">Equipe contratada em CLT<span class="req">*</span></label>
+              <div class="suffix"><input id="clt" v-model="f.clt_pct" class="input" type="number" min="0" max="100" step="1" inputmode="decimal" placeholder="Ex.: 80" :aria-invalid="!!errors.clt_pct"><span>%</span></div>
+              <span v-if="errors.clt_pct" class="error">{{ errors.clt_pct }}</span><span v-else class="hint">Percentual dos funcionários em CLT. O restante é considerado PJ.</span></div>
             <div class="field"><label for="arpu">ARPU<span class="req">*</span></label>
               <div class="prefix"><span>R$</span><input id="arpu" v-model="f.arpu" class="input" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Ex.: 99,90" :aria-invalid="!!errors.arpu"></div>
               <span v-if="errors.arpu" class="error">{{ errors.arpu }}</span><span v-else class="hint">Valor médio mensal pago por cliente.</span></div>
           </div>
         </article>
+
+        <Transition name="pj">
+          <article v-if="hasPj" class="card">
+            <div class="card-head"><h2><span class="n">PJ</span> Contratos PJ</h2></div>
+            <div class="card-body form-grid">
+              <p class="small muted full" style="margin:0">Como {{ (100 - decimal(f.clt_pct)).toLocaleString('pt-BR') }}% da equipe é PJ, conte como são esses contratos (valores médios).</p>
+              <div class="field"><label for="pjfee">Honorário médio mensal por PJ<span class="req">*</span></label>
+                <div class="prefix"><span>R$</span><input id="pjfee" v-model="f.pj_avg_fee" class="input" type="number" min="1" step="0.01" inputmode="decimal" placeholder="Ex.: 3500" :aria-invalid="!!errors.pj_avg_fee"></div>
+                <span v-if="errors.pj_avg_fee" class="error">{{ errors.pj_avg_fee }}</span><span v-else class="hint">Valor médio pago a cada prestador por mês.</span></div>
+              <div class="field"><label for="pjh">Carga horária semanal média<span class="req">*</span></label>
+                <div class="suffix"><input id="pjh" v-model="f.pj_weekly_hours" class="input" type="number" min="1" max="168" step="1" inputmode="decimal" placeholder="Ex.: 44" :aria-invalid="!!errors.pj_weekly_hours"><span>h</span></div>
+                <span v-if="errors.pj_weekly_hours" class="error">{{ errors.pj_weekly_hours }}</span></div>
+              <div class="field"><label for="pjd">Dias trabalhados por semana<span class="req">*</span></label>
+                <input id="pjd" v-model="f.pj_days_week" class="input" type="number" min="1" max="7" step="1" inputmode="numeric" placeholder="Ex.: 5" :aria-invalid="!!errors.pj_days_week">
+                <span v-if="errors.pj_days_week" class="error">{{ errors.pj_days_week }}</span></div>
+              <div class="field"><label for="pjm">Tempo médio de contrato<span class="req">*</span></label>
+                <div class="suffix"><input id="pjm" v-model="f.pj_contract_months" class="input" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex.: 18" :aria-invalid="!!errors.pj_contract_months"><span>meses</span></div>
+                <span v-if="errors.pj_contract_months" class="error">{{ errors.pj_contract_months }}</span><span v-else class="hint">Há quanto tempo, em média, prestam serviço.</span></div>
+              <div class="field"><span class="label">Trabalham em escala?<span class="req">*</span></span>
+                <SegmentedControl v-model="f.pj_shift" name="pjshift" :options="cfg.pj_shift_options" :invalid="!!errors.pj_shift" />
+                <span v-if="errors.pj_shift" class="error">{{ errors.pj_shift }}</span><span v-else class="hint">Ex.: 12×36, plantões, revezamento.</span></div>
+              <div class="field"><span class="label">Emitem nota fiscal?<span class="req">*</span></span>
+                <SegmentedControl v-model="f.pj_invoice" name="pjinvoice" :options="cfg.pj_invoice_options" :invalid="!!errors.pj_invoice" />
+                <span v-if="errors.pj_invoice" class="error">{{ errors.pj_invoice }}</span></div>
+              <div class="field full"><label for="pjn">Outras características dos contratos</label>
+                <textarea id="pjn" v-model="f.pj_notes" class="textarea" rows="2" maxlength="1000" placeholder="Ex.: exclusividade, uso de veículo próprio, benefícios, multa rescisória…" />
+                <span class="hint">Opcional.</span></div>
+            </div>
+          </article>
+        </Transition>
 
         <div class="submit card">
           <p class="small muted">Ao simular, os dados ficam registrados no histórico do provedor. O resultado é analisado internamente e não gera compromisso.</p>
@@ -278,4 +327,6 @@ function again() {
 .opt-card .btn { margin-top: auto; white-space: normal; text-align: center; }
 .result.with-value > a { display: block; text-align: center; }
 @media (max-width: 700px) { .decide { grid-template-columns: 1fr; } }
+.pj-enter-active, .pj-leave-active { transition: opacity .25s, transform .25s; }
+.pj-enter-from, .pj-leave-to { opacity: 0; transform: translateY(-8px); }
 </style>

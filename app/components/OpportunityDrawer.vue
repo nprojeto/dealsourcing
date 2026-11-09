@@ -4,7 +4,7 @@ interface OppCommission { id: string; status: string; amount: number | null; pai
 
 interface Activity { id: string; kind: string; outcome: string | null; event: string | null; description: string | null; occurred_at: string; user: { full_name: string } | null; data: Record<string, unknown> }
 interface Attachment { id: string; file_name: string; mime_type: string; size_bytes: number; created_at: string; uploaded_by: string; uploader: { full_name: string } | null }
-interface Sim { id: string; created_at: string; status: string; client_base: number; cities: string[]; arpu: number; poles_valid_pct: number; employment_type: string; regularized: string; technicians_count: number; employees_count: number; formalized_at: string | null; result: SimResult | null; version: { version: number } | null }
+interface Sim { id: string; created_at: string; status: string; client_base: number; cities: string[]; arpu: number; poles_valid_pct: number; employment_type: string; clt_pct?: number | null; regularized: string; technicians_count: number; employees_count: number; formalized_at: string | null; result: SimResult | null; version: { version: number } | null }
 interface Detail {
   opportunity: OppItem; isp: Record<string, unknown> & { owner?: { full_name: string; email: string; phone: string | null } | null } | null
   simulations: Sim[]; formalizations: { id: string; simulation_id: string; formalized_at: string }[]
@@ -300,7 +300,7 @@ const formalizedIds = computed(() => new Set((d.value?.formalizations ?? []).map
             <span class="badge" :class="formalizedIds.has(s.id) ? 'success' : 'info'">{{ formalizedIds.has(s.id) ? 'Interesse formalizado' : 'Simulação' }}</span>
           </div>
           <SimulationResult v-if="s.result" :result="s.result" :client-base="s.client_base" />
-          <p class="small muted" style="margin:.5rem 0 0">{{ s.cities.join(', ') }} · ARPU {{ fmtBRL(s.arpu) }} · postes {{ Number(s.poles_valid_pct).toLocaleString('pt-BR') }}% · {{ s.technicians_count }} técnicos/{{ s.employees_count }} funcionários ({{ s.employment_type }}) · regularizado: {{ s.regularized === 'SIM' ? 'sim' : 'não' }}</p>
+          <p class="small muted" style="margin:.5rem 0 0">{{ s.cities.join(', ') }} · ARPU {{ fmtBRL(s.arpu) }} · postes {{ Number(s.poles_valid_pct).toLocaleString('pt-BR') }}% · {{ s.technicians_count }} técnicos/{{ s.employees_count }} funcionários ({{ teamMix(s) }}) · regularizado: {{ s.regularized === 'SIM' ? 'sim' : 'não' }}</p>
         </article>
       </div>
 

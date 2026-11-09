@@ -6,8 +6,19 @@ function showInput(p: Penalty) {
   if (p.key === 'arpu') return fmtBRL(Number(p.input))
   if (p.key === 'poles_valid_pct') return `${Number(p.input).toLocaleString('pt-BR')}%`
   if (p.key === 'client_base') return `${fmtInt(Number(p.input))} clientes`
-  if (p.key === 'regularized') return p.input === 'SIM' ? 'Sim' : 'Não'
+  if (p.input === null || p.input === undefined) return ''
+  if (p.key === 'clt_pct') return `${Number(p.input).toLocaleString('pt-BR')}% em CLT`
+  if (p.key === 'pj_avg_fee') return `${fmtBRL(Number(p.input))}/mês`
+  if (p.key === 'pj_weekly_hours') return `${Number(p.input).toLocaleString('pt-BR')} h/semana`
+  if (p.key === 'pj_days_week') return `${p.input} dias`
+  if (p.key === 'pj_contract_months') return `${p.input} meses`
   return String(p.input)
+}
+/** Opções (Sim/Não…) já aparecem pelo nome da faixa; números mostram valor e faixa. */
+function detail(p: Penalty) {
+  if (!p.applied && p.input === null) return p.band
+  if (['regularized', 'pj_shift', 'pj_invoice'].includes(p.key)) return p.band
+  return `${showInput(p)} · ${p.band}`
 }
 </script>
 
@@ -24,8 +35,8 @@ function showInput(p: Penalty) {
         <tr><td>Valor-base</td><td>{{ fmtBRL(result.base_min_total) }} a {{ fmtBRL(result.base_max_total) }}<template v-if="clientBase"> ({{ fmtInt(clientBase) }} clientes)</template></td></tr>
         <tr v-for="p in result.penalties" :key="p.key" :class="{ off: !p.applied }">
           <td>{{ p.label }}</td>
-          <td><span class="muted">{{ showInput(p) }} · {{ p.band }}</span>
-            <b class="pen" :class="{ zero: !p.penalty }">{{ p.applied ? `−${fmtPct(p.penalty)}` : 'desativado' }}</b></td>
+          <td><span class="muted">{{ detail(p) }}</span>
+            <b class="pen" :class="{ zero: !p.penalty }">{{ p.applied ? `−${fmtPct(p.penalty)}` : p.key.startsWith('pj_') ? 'não se aplica' : 'desativado' }}</b></td>
         </tr>
         <tr class="tot"><td>Penalização total</td><td><b>{{ fmtPct(result.total_penalty) }}</b>
           <span class="muted small"> · {{ result.formula === 'multiplicative' ? 'composição multiplicativa' : 'soma aditiva' }} · parâmetros v{{ result.parameter_version }}</span></td></tr>
@@ -35,8 +46,9 @@ function showInput(p: Penalty) {
 </template>
 
 <style scoped>
-.range { display: flex; align-items: stretch; gap: 1rem; background: var(--navy); color: #fff; border-radius: var(--radius); padding: .9rem 1.1rem; }
-.range > div:not(.sep) { flex: 1; }
+.range { display: flex; flex-wrap: wrap; align-items: stretch; gap: 1rem; background: var(--navy); color: #fff; border-radius: var(--radius); padding: .9rem 1.1rem; }
+.range > div:not(.sep) { flex: 1 1 150px; min-width: 0; }
+.range strong { display: block; overflow-wrap: anywhere; }
 .range .sep { width: 1px; background: rgba(255,255,255,.2); }
 .lbl { display: block; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: #9FB0E8; font-weight: 600; }
 .range strong { font: 800 1.25rem var(--font-head); }
