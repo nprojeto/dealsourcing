@@ -112,7 +112,7 @@ async function publish() {
 
 // ----- teste de cálculo -----
 const test = reactive({ client_base: 4000, region: 'SE', regularized: 'SIM', poles_valid_pct: 85, clt_pct: 100, arpu: 99.9,
-  pj_avg_fee: 3500, pj_weekly_hours: 44, pj_days_week: 5, pj_shift: 'NAO', pj_invoice: 'SIM', pj_contract_months: 12 })
+  clt_avg_salary: 2800, pj_avg_fee: 3500 })
 const preview = ref<SimResult | null>(null)
 const previewing = ref(false)
 async function runPreview() {
@@ -192,7 +192,8 @@ async function runPreview() {
           </div>
           <div class="card-body">
             <p class="small muted" style="margin-top:0">Campo do formulário: <strong>{{ CRITERION_FIELD_LABEL[c.key] }}</strong><template v-if="c.unit"> ({{ c.unit }})</template>
-              <template v-if="c.key.startsWith('pj_')"> · <span class="badge plain">Contratos PJ</span> conta só quando a equipe não é 100% CLT</template></p>
+              <template v-if="c.key === 'pj_avg_fee'"> · conta só quando há PJ na equipe</template>
+              <template v-else-if="c.key === 'clt_avg_salary'"> · conta só quando há CLT na equipe</template></p>
             <table v-if="c.type === 'ranges'" class="bands">
               <thead><tr><th>De</th><th>Até (menor que)</th><th>Penalização</th><th /></tr></thead>
               <tbody>
@@ -234,13 +235,9 @@ async function runPreview() {
               <div class="field"><label for="t-clt">Equipe em CLT (%)</label><input id="t-clt" v-model.number="test.clt_pct" class="input sm" type="number" min="0" max="100"></div>
               <div class="field"><label for="t-arpu">ARPU (R$)</label><input id="t-arpu" v-model.number="test.arpu" class="input sm" type="number" min="0" step="0.01"></div>
             </div>
-            <div v-if="test.clt_pct < 100" class="grid-2 mini pj-test">
-              <div class="field"><label for="t-fee">Honorário PJ (R$)</label><input id="t-fee" v-model.number="test.pj_avg_fee" class="input sm" type="number" min="1"></div>
-              <div class="field"><label for="t-hrs">Horas/semana</label><input id="t-hrs" v-model.number="test.pj_weekly_hours" class="input sm" type="number" min="1" max="168"></div>
-              <div class="field"><label for="t-days">Dias/semana</label><input id="t-days" v-model.number="test.pj_days_week" class="input sm" type="number" min="1" max="7"></div>
-              <div class="field"><label for="t-mon">Contrato (meses)</label><input id="t-mon" v-model.number="test.pj_contract_months" class="input sm" type="number" min="0"></div>
-              <div class="field"><label for="t-esc">Em escala</label><select id="t-esc" v-model="test.pj_shift" class="select sm"><option value="SIM">Sim</option><option value="NAO">Não</option></select></div>
-              <div class="field"><label for="t-nf">Nota fiscal</label><select id="t-nf" v-model="test.pj_invoice" class="select sm"><option value="SIM">Sim</option><option value="PARCIAL">Parcialmente</option><option value="NAO">Não</option></select></div>
+            <div class="grid-2 mini pj-test">
+              <div class="field"><label for="t-sal">Salário médio CLT (R$)</label><input id="t-sal" v-model.number="test.clt_avg_salary" class="input sm" type="number" min="1" :disabled="test.clt_pct <= 0"></div>
+              <div class="field"><label for="t-fee">Honorário médio PJ (R$)</label><input id="t-fee" v-model.number="test.pj_avg_fee" class="input sm" type="number" min="1" :disabled="test.clt_pct >= 100"></div>
             </div>
             <button class="btn btn-outline btn-block" :disabled="previewing" @click="runPreview"><span v-if="previewing" class="spinner" /> Calcular com os parâmetros do editor</button>
             <SimulationResult v-if="preview" :result="preview" :client-base="test.client_base" />

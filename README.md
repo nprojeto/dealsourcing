@@ -8,10 +8,10 @@ Backend: **Supabase** (banco, autenticação e Edge Function `api`).
 
 ## Fases entregues: 1 a 7 (Fundação, Simulador, Equipe e parceiros, CRM e funil, Reuniões, Comissões, Painel e relatórios)
 
-**Simulador — equipe e contratos PJ (nov/2026):** o vínculo passou a ser o percentual da equipe em CLT,
-com faixas editáveis (iniciais: 0–50%, 50–70%, 70–90%, 90–100%). Quando há PJ, o provedor informa honorário
-médio, carga horária semanal, dias por semana, escala, nota fiscal, tempo médio de contrato e outras
-características; o peso de cada item é definido pela gestão em Parâmetros do simulador.
+**Simulador — composição da equipe (nov/2026):** em uma linha, o provedor informa total de colaboradores,
+% CLT, % PJ (calculado), salário médio CLT e honorário médio PJ. O % CLT tem faixas editáveis (iniciais:
+0–50%, 50–70%, 70–90%, 90–100%); salário e honorário médios têm faixas com peso definido pela gestão em
+Parâmetros do simulador.
 
 **Fase 7:** Painel gerencial (admin e gestores) com indicadores de captação, atendimento e resultado,
 pipeline estimado, evolução mensal/semanal, funil com taxa de conversão entre etapas, distribuição por

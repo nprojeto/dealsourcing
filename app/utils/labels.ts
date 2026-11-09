@@ -96,16 +96,11 @@ export const CRITERION_FIELD_LABEL: Record<string, string> = {
   client_base: 'Base de clientes',
   regularized: 'Regularização societária',
   poles_valid_pct: 'Postes com contrato válido',
-  clt_pct: 'Equipe em CLT',
-  pj_avg_fee: 'Honorário médio dos PJ',
-  pj_weekly_hours: 'Carga horária semanal dos PJ',
-  pj_days_week: 'Dias por semana dos PJ',
-  pj_shift: 'PJ em escala',
-  pj_invoice: 'PJ emitem nota fiscal',
-  pj_contract_months: 'Tempo médio de contrato dos PJ',
+  clt_pct: '% da equipe em CLT',
+  clt_avg_salary: 'Salário médio CLT',
+  pj_avg_fee: 'Honorário médio PJ',
   arpu: 'ARPU',
 }
-export const YES_NO_PARTIAL: Record<string, string> = { SIM: 'Sim', NAO: 'Não', PARCIAL: 'Parcialmente' }
 
 /** Composição da equipe: "60% CLT" (ou o vínculo das simulações antigas). */
 export function teamMix(s: { clt_pct?: number | null; employment_type?: string | null }): string {
