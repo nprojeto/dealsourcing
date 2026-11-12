@@ -6,6 +6,8 @@ declare module '#app' {
     access?: 'public' | 'guest' | 'auth'
     /** Perfis autorizados a abrir a página */
     roles?: Role[]
+    /** Usa a largura toda da área de conteúdo, sem margens (ex.: mapa) */
+    wide?: boolean
   }
 }
 

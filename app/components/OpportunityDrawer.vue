@@ -24,6 +24,10 @@ const tab = ref<'resumo' | 'atividades' | 'simulacoes' | 'documentos' | 'reunioe
 const meetings = ref<MeetingItem[]>([])
 const busy = ref('')
 const o = computed(() => d.value?.opportunity ?? null)
+interface AmapSource { amap_key?: string; tier?: string; buyers?: Record<string, string>; subscribers?: number; trend?: number; size?: string; legal_name?: string
+  contacts?: { name: string; phone: string; email: string }[]; dataset_version?: string; sent_at?: string }
+/** Dados trazidos do Apeltrys Analytical Map (tier, compradores, contatos dos sócios). */
+const amap = computed(() => { const sd = (o.value as unknown as { source_data?: AmapSource | null })?.source_data; return sd?.amap_key ? sd : null })
 
 async function load(keepTab = false) {
   if (!props.id) return
@@ -229,6 +233,22 @@ const formalizedIds = computed(() => new Set((d.value?.formalizations ?? []).map
             <div class="field"><label for="pcb">Clientes (estimativa)</label><input id="pcb" v-model="f.client_base_estimate" class="input" type="number" min="0" :disabled="!d.can_edit"></div>
             <p class="small muted full" style="margin:0">CNPJ: <span class="mono">{{ o.prospect_cnpj ? fmtDocument(o.prospect_cnpj) : 'não informado' }}</span>. Quando o provedor se cadastrar no portal com este CNPJ, a oportunidade é vinculada automaticamente.</p>
           </div>
+        </section>
+
+        <section v-if="amap" class="box amap">
+          <div class="eyebrow">Apeltrys Analytical Map</div>
+          <dl class="dl">
+            <dt>Tier</dt><dd><b>{{ amap.tier ?? '—' }}</b></dd>
+            <dt>Compradores</dt><dd>{{ Object.entries(amap.buyers ?? {}).map(([k, v]) => `${k} (${v})`).join(' · ') || '—' }}</dd>
+            <dt>Assinantes</dt><dd>{{ fmtInt(amap.subscribers) }}<template v-if="amap.trend != null"> · tendência {{ amap.trend > 0 ? '+' : '' }}{{ fmtInt(Math.round(amap.trend)) }}/mês</template></dd>
+            <template v-if="amap.legal_name"><dt>Razão social</dt><dd>{{ amap.legal_name }}</dd></template>
+            <template v-for="(c, i) in amap.contacts ?? []" :key="i">
+              <dt>Sócio {{ i + 1 }}</dt>
+              <dd>{{ c.name || '—' }}<template v-if="c.phone"> · <a :href="`tel:${c.phone.replace(/\D/g, '')}`">{{ fmtPhone(c.phone) }}</a></template><template v-if="c.email"> · <a :href="`mailto:${c.email}`">{{ c.email }}</a></template></dd>
+            </template>
+            <template v-if="!(amap.contacts ?? []).length"><dt>Contatos</dt><dd class="muted">Sem contatos na base</dd></template>
+            <dt>Enviado em</dt><dd>{{ fmtDateTime(amap.sent_at) }}</dd>
+          </dl>
         </section>
 
         <section v-if="d.can_assign" class="box stack">

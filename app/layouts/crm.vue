@@ -16,6 +16,7 @@ const groups: { title: string; items: Item[] }[] = [
   ] },
   { title: 'Comercial', items: [
     { to: '/crm/oportunidades', label: 'Funil comercial', icon: 'briefcase' },
+    { to: '/crm/apeltrys', label: 'Apeltrys Analytical Map', icon: 'map', roles: ['admin', 'gestor_comercial'] },
     { to: '/crm/provedores', label: 'Provedores', icon: 'building' },
     { to: '/crm/simulacoes', label: 'Simulações', icon: 'file', roles: ['admin', 'gestor_comercial'] },
     { to: '/crm/comissoes', label: 'Comissões', icon: 'wallet' },
@@ -73,7 +74,7 @@ const title = computed(() => visible.value.flatMap((g) => g.items).find((i) => i
           <NotificationBell />
         </div>
       </header>
-      <main class="content"><slot /></main>
+      <main class="content" :class="{ wide: route.meta.wide }"><slot /></main>
     </div>
   </div>
 </template>
@@ -111,6 +112,7 @@ const title = computed(() => visible.value.flatMap((g) => g.items).find((i) => i
 @media (max-width: 600px) { .crumb-app, .crumb :deep(svg) { display: none; } }
 .burger { display: none; }
 .content { flex: 1; padding: 1.75rem 1.5rem 3rem; width: 100%; max-width: 1320px; }
+.content.wide { max-width: none; padding: 0; display: flex; flex-direction: column; }
 .scrim { display: none; }
 @media (max-width: 960px) {
   .side { transform: translateX(-100%); transition: transform .2s ease; box-shadow: var(--shadow-lg); }

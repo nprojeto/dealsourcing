@@ -112,7 +112,7 @@ export function teamMix(s: { clt_pct?: number | null; employment_type?: string |
 // ----- Fase 4: funil comercial -----
 export const PRIORITY_LABEL: Record<string, string> = { baixa: 'Baixa', normal: 'Normal', alta: 'Alta' }
 export const PRIORITY_TONE: Record<string, string> = { baixa: 'plain', normal: '', alta: 'danger' }
-export const ORIGIN_LABEL: Record<string, string> = { formalizacao: 'Formalização', prospeccao: 'Prospecção', manual: 'Cadastro do portal' }
+export const ORIGIN_LABEL: Record<string, string> = { formalizacao: 'Formalização', prospeccao: 'Prospecção', manual: 'Cadastro do portal', apeltrys: 'Apeltrys Analytical Map' }
 export const ACTIVITY_KIND_LABEL: Record<string, string> = {
   ligacao: 'Ligação', whatsapp: 'WhatsApp', email: 'E-mail', visita: 'Visita', reuniao: 'Reunião', observacao: 'Observação', sistema: 'Sistema',
 }

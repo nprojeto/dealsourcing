@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apeltrys Analytical Map · NOVALE</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" type="image/png" href="assets/img/novale-esfera-azul.png">
+<link rel="stylesheet" href="css/app.css">
+
+</head>
+<body>
+<div id="boot" class="boot"><img src="assets/img/novale-esfera-azul.png" alt=""><span>Carregando o mapa…</span></div>
+<header>
+  <img class="logo" alt="Novale" src="assets/img/novale-logo-branco.png">
+  <div class="div"></div>
+  <div>
+    <h1>Apeltrys Analytical Map</h1>
+    <div class="sub">Municípios dos compradores (Nio, Zaaz/Sky, Alares) + vizinhos × Base Anatel de ISPs</div>
+  </div>
+  <div class="sp"></div>
+  <button id="exp-isp">Exportar matriz ISPs (CSV)</button>
+  <button id="exp-mun">Exportar municípios (CSV)</button>
+  <button id="exp-json">Exportar JSON</button>
+</header>
+<div class="app">
+<aside>
+  <h3>Compradores</h3>
+  <div id="buyers"></div>
+
+  <div class="buyer" id="addBuyerBox">
+    <div class="hd"><span class="dot" style="background:var(--custom)"></span>Outros players <span class="tbc">pendente</span></div>
+    <div class="meta">Lista ainda não recebida. Cole os municípios (um por linha, "UF;Município") para incluir um novo comprador.</div>
+    <input type="text" id="cbName" placeholder="Nome do player" style="width:100%;margin-bottom:6px">
+    <textarea id="cbList" placeholder="SP;Campinas&#10;MG;Uberlândia"></textarea>
+    <div class="row"><button class="btn" id="cbAdd">Adicionar comprador</button><span class="mini muted" id="cbMsg"></span></div>
+  </div>
+
+  <h3>Corte de Tiers (assinantes do ISP)</h3>
+  <div class="row"><label>Tier 1 a partir de</label><input type="number" id="t1" step="500" min="0"></div>
+  <div class="row"><label>Tier 2 a partir de</label><input type="number" id="t2" step="500" min="0"></div>
+  <div class="row"><label>Ignorar ISPs acima de<br><span class="mini muted">operadoras/consolidadores</span></label><input type="number" id="cap" step="50000" min="0"></div>
+  <div class="mini muted">Assinantes = máximo mensal jan–mai/2026 da base Anatel. Abaixo do Tier 2 o ISP com comprador fica como Tier 3.</div>
+
+  <h3>Filtros</h3>
+  <div class="row"><label>UF</label><select id="fUF"><option value="">Todas</option></select></div>
+  <label class="chk"><input type="checkbox" id="fFlag"> Só ISPs com flag = 1 (col. O da base)</label>
+
+  <h3>Parâmetros</h3>
+  <div class="mini muted" style="margin-bottom:6px">Salvos automaticamente no servidor. Valem para toda a gestão.</div>
+  <div class="mini" id="saveMsg"></div>
+  <button class="btn ghost" id="reset" style="margin-top:6px">Restaurar padrões</button>
+</aside>
+
+<main>
+  <div class="kpis" id="kpis"></div>
+  <div class="tabs">
+    <div class="tab on" data-v="mapa">Mapa</div>
+    <div class="tab" data-v="isps">Matriz de ISPs</div>
+    <div class="tab" data-v="mun">Municípios</div>
+    <div class="tab" data-v="notas">Fontes e notas</div>
+  </div>
+
+  <section class="view on" id="v-mapa">
+    <div id="mapwrap">
+      <canvas id="map"></canvas>
+      <div class="maptools">
+        <div class="row" style="margin:0"><label>Colorir por</label><select id="colorBy"></select></div>
+        <label class="chk"><input type="checkbox" id="showDots" checked> Mostrar sedes dos ISPs</label>
+        <div class="row" style="margin:0"><label>Pontos</label><select id="dotsWhich"><option value="T12">Tier 1 e 2</option><option value="T1">Só Tier 1</option><option value="ALL">Todos com comprador</option><option value="EVERY">Todos os ISPs</option></select></div>
+        <input type="text" id="munSearch" list="munList" placeholder="Buscar município…">
+        <datalist id="munList"></datalist>
+      </div>
+      <div class="zoombtns"><button id="zin">+</button><button id="zout">−</button><button id="zreset" title="Brasil">⌂</button></div>
+      <div class="legend" id="legend"></div>
+      <div id="tip"></div>
+    </div>
+    <div id="detail"><div class="empty"><img src="assets/img/novale-esfera-azul.png" alt="">Clique em um município ou na sede de um ISP para ver os detalhes.</div></div>
+  </section>
+
+  <section class="view" id="v-isps">
+    <div class="tblwrap">
+      <div class="tblbar">
+        <input type="text" id="qIsp" placeholder="Buscar ISP, razão social, CNPJ, cidade…" style="width:280px">
+        <select id="fTier"><option value="">Todos os tiers</option><option value="T1">Tier 1</option><option value="T2">Tier 2</option><option value="T3">Tier 3</option><option value="T12">Tier 1 + 2</option><option value="T0">Sem comprador</option><option value="TX">Excluídos</option></select>
+        <select id="fBuyer"><option value="">Qualquer comprador</option></select>
+        <select id="fSede"><option value="">Com e sem sede</option><option value="1">Com município sede</option><option value="0">Sem município sede</option></select>
+        <select id="fFunil"><option value="">No funil e fora</option><option value="out">Fora do funil</option><option value="in">Já no funil</option></select>
+        <span class="mini muted" id="ispCount"></span>
+        <span style="flex:1"></span>
+        <button class="btn send-bulk" id="sendBulk">Enviar ao funil</button>
+      </div>
+      <div class="tblscroll"><table id="tIsp"><thead></thead><tbody></tbody></table></div>
+      <div class="pager"><button class="btn ghost" id="pPrev">‹</button><span id="pInfo"></span><button class="btn ghost" id="pNext">›</button></div>
+    </div>
+    <div id="detail2" style="width:360px;border-left:1px solid var(--line);overflow:auto;padding:12px 14px;flex:none"><div class="empty"><img src="assets/img/novale-esfera-azul.png" alt="">Clique em um ISP para ver detalhes e contatos.</div></div>
+  </section>
+
+  <section class="view" id="v-mun">
+    <div class="tblwrap">
+      <div class="tblbar">
+        <input type="text" id="qMun" placeholder="Buscar município…" style="width:240px">
+        <select id="fMunBuyer"><option value="">Com interesse de algum comprador</option><option value="*">Todos os municípios</option></select>
+        <select id="fMunTipo"><option value="">Atua ou vizinho</option><option value="A">Só onde atua</option><option value="V">Só vizinhos</option></select>
+        <span class="mini muted" id="munCount"></span>
+      </div>
+      <div class="tblscroll"><table id="tMun"><thead></thead><tbody></tbody></table></div>
+      <div class="pager"><button class="btn ghost" id="mPrev">‹</button><span id="mInfo"></span><button class="btn ghost" id="mNext">›</button></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-notas"><div class="notes"><img src="assets/img/novale-logo-slogan-azul.png" alt="Novale" style="height:56px;margin:4px 0 6px"><div id="notes"></div></div></section>
+</main>
+</div>
+<footer><b>NOVALE – T8 Soluções Ltda.</b> | CNPJ 43.530.033/0001-56 <span>· Documento Confidencial</span><span class="sp"></span><span>Transformando ideias em soluções inteligentes.</span></footer>
+
+<script src="vendor/d3.min.js"></script>
+<script src="vendor/topojson-client.min.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
