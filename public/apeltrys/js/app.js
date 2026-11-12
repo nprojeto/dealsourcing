@@ -289,7 +289,7 @@ document.getElementById('munSearch').onchange=e=>{ const v=e.target.value; const
 
 // ---------- detail panels ----------
 function showMun(id){
-  selMun=id; selIsp=null; draw();
+  selMun=id; selIsp=null; showDetailPanel(); draw();
   const m=MUN.get(id); const o=MSTAT.get(id)||{};
   const L=(ISP_BY_MUN.get(id)||[]).slice().sort((a,b)=>b.max-a.max);
   const al=DATA.alares[id];
@@ -319,7 +319,7 @@ function spark(m){ const w=300,h=50,mx=Math.max(...m),mn=Math.min(...m); const s
 function socio(s,lbl){ if(!s||!s[0]) return ''; const tel=[s[1],s[2]].filter(Boolean).join(' ');
   return `<div class="kv" style="margin-bottom:6px"><div>${lbl}</div><div><b>${esc(s[0])}</b></div>${tel?`<div>Celular</div><div>(${esc(s[1])}) ${esc(s[2])}</div>`:''}${s[3]?`<div>E-mail</div><div><a href="mailto:${esc(s[3].toLowerCase())}">${esc(s[3].toLowerCase())}</a></div>`:''}</div>`; }
 function showIsp(s,target){
-  selIsp=s; if(s.ibge) selMun=s.ibge; if(target==='detail') draw();
+  selIsp=s; if(s.ibge) selMun=s.ibge; showDetailPanel(); if(target==='detail') draw();
   const m=s.ibge?MUN.get(s.ibge):null;
   let h=`<h2>${esc(s.nome)}</h2><div class="muted">${esc(s.rs||'')}</div><div style="margin:6px 0">${tierHtml(s)} ${buyerBadges(s.by)}</div>`;
   h+=`<div class="sec"><div class="kv">
@@ -429,6 +429,22 @@ function renderMunTable(){
 ['qMun','fMunBuyer','fMunTipo'].forEach(id=>document.getElementById(id).addEventListener(id==='qMun'?'input':'change',()=>{munPage=0;renderMunTable();}));
 document.getElementById('mPrev').onclick=()=>{munPage=Math.max(0,munPage-1);renderMunTable();};
 document.getElementById('mNext').onclick=()=>{munPage++;renderMunTable();};
+
+// ---------- painéis retráteis (lembrados neste navegador) ----------
+const UIKEY='amap_ui_v1';
+let UI={}; try{ UI=JSON.parse(localStorage.getItem(UIKEY)||'{}')||{}; }catch(e){ UI={}; }
+if(UI.legendBox===undefined) UI.legendBox = window.innerHeight<820;   // telas baixas: legenda começa recolhida
+if(UI.maptools===undefined) UI.maptools = window.innerHeight<700;
+const saveUI=()=>{ try{ localStorage.setItem(UIKEY,JSON.stringify(UI)); }catch(e){} };
+function applyUI(){
+  for(const k of ['aside','kpis','detail']){ document.body.classList.toggle('no-'+k,!!UI['no_'+k]);
+    const b=document.querySelector(`[data-tg="${k}"]`); if(b) b.classList.toggle('on',!UI['no_'+k]); }
+  for(const id of ['maptools','legendBox']){ const el=document.getElementById(id); if(el) el.classList.toggle('folded',!!UI[id]); }
+  requestAnimationFrame(()=>{ if(document.getElementById('v-mapa').classList.contains('on')) layout(); });
+}
+document.querySelectorAll('[data-tg]').forEach(b=>b.onclick=()=>{ const k='no_'+b.dataset.tg; UI[k]=!UI[k]; saveUI(); applyUI(); });
+document.querySelectorAll('[data-fold]').forEach(b=>b.onclick=()=>{ const k=b.dataset.fold; UI[k]=!UI[k]; saveUI(); applyUI(); });
+function showDetailPanel(){ if(UI.no_detail){ UI.no_detail=false; saveUI(); applyUI(); } }
 
 // ---------- tabs ----------
 function goTab(v){ document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.v===v)); document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v)); if(v==='mapa') requestAnimationFrame(layout); }
@@ -555,6 +571,7 @@ function update(skipSave){
 }
 setFunnel=f=>{ FUN=f; update(true); };
 update(true);
+applyUI();
 window.addEventListener('resize',()=>{ if(document.getElementById('v-mapa').classList.contains('on')) layout(); });
 requestAnimationFrame(layout);
 } // start

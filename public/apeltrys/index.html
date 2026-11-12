@@ -19,6 +19,11 @@
     <div class="sub">Municípios dos compradores (Nio, Zaaz/Sky, Alares) + vizinhos × Base Anatel de ISPs</div>
   </div>
   <div class="sp"></div>
+  <div class="toggles" role="group" aria-label="Mostrar ou ocultar painéis">
+    <button data-tg="aside" title="Mostrar/ocultar o painel de parâmetros">☰ Parâmetros</button>
+    <button data-tg="kpis" title="Mostrar/ocultar os indicadores">Indicadores</button>
+    <button data-tg="detail" title="Mostrar/ocultar o painel de detalhes">Detalhes</button>
+  </div>
   <button id="exp-isp">Exportar matriz ISPs (CSV)</button>
   <button id="exp-mun">Exportar municípios (CSV)</button>
   <button id="exp-json">Exportar JSON</button>
@@ -64,15 +69,18 @@
   <section class="view on" id="v-mapa">
     <div id="mapwrap">
       <canvas id="map"></canvas>
-      <div class="maptools">
+      <div class="maptools" id="maptools">
+        <button class="ptitle" data-fold="maptools">Opções do mapa <i>▾</i></button>
+        <div class="pbody">
         <div class="row" style="margin:0"><label>Colorir por</label><select id="colorBy"></select></div>
         <label class="chk"><input type="checkbox" id="showDots" checked> Mostrar sedes dos ISPs</label>
         <div class="row" style="margin:0"><label>Pontos</label><select id="dotsWhich"><option value="T12">Tier 1 e 2</option><option value="T1">Só Tier 1</option><option value="ALL">Todos com comprador</option><option value="EVERY">Todos os ISPs</option></select></div>
         <input type="text" id="munSearch" list="munList" placeholder="Buscar município…">
         <datalist id="munList"></datalist>
+        </div>
       </div>
       <div class="zoombtns"><button id="zin">+</button><button id="zout">−</button><button id="zreset" title="Brasil">⌂</button></div>
-      <div class="legend" id="legend"></div>
+      <div class="legend" id="legendBox"><button class="ptitle" data-fold="legendBox">Legenda <i>▾</i></button><div class="pbody" id="legend"></div></div>
       <div id="tip"></div>
     </div>
     <div id="detail"><div class="empty"><img src="assets/img/novale-esfera-azul.png" alt="">Clique em um município ou na sede de um ISP para ver os detalhes.</div></div>

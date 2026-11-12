@@ -138,3 +138,21 @@ header .sub{display:block!important;opacity:.85}
   .tblscroll{max-height:65vh}
   footer{flex-wrap:wrap;padding:6px 12px}
 }
+/* Painéis retráteis */
+header .toggles{display:flex;gap:4px;padding:3px;border-radius:8px;background:rgba(255,255,255,.08)}
+header .toggles button{background:transparent;border-color:transparent;opacity:.6}
+header .toggles button.on{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.3);opacity:1}
+body.no-aside .app{grid-template-columns:minmax(0,1fr)}
+body.no-aside aside{display:none}
+body.no-kpis .kpis{display:none}
+body.no-detail #detail,body.no-detail #detail2{display:none}
+.ptitle{all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;cursor:pointer;font-weight:700;font-size:11.5px;letter-spacing:.4px;text-transform:uppercase;color:var(--accent)}
+.ptitle i{font-style:normal;transition:transform .15s}
+.folded .ptitle i{transform:rotate(-90deg)}
+.maptools .pbody{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.legend .pbody{margin-top:4px}
+.folded .pbody{display:none!important}
+.maptools.folded,.legend.folded{padding:6px 10px}
+.legend{max-height:calc(100% - 20px);overflow:auto}
+@media (max-width:900px){ header .toggles button[data-tg="aside"]{display:none} }
+@media (max-width:900px){ body.no-aside aside{display:block} }
