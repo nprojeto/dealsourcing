@@ -8,6 +8,11 @@ Backend: **Supabase** (banco, autenticação e Edge Function `api`).
 
 ## Fases entregues: 1 a 7 (Fundação, Simulador, Equipe e parceiros, CRM e funil, Reuniões, Comissões, Painel e relatórios)
 
+**Funil M&A (nov/2026):** novas etapas 5a NDA assinado e mandato enviado (subetapa), 10 Contrato/Mandato,
+11 Envio e análise das informações do ISP, 12 Busca e conversa com compradores, 13 Oferta inicial; renomeadas
+14 Negociação inicial, 15 Diligência, 16 Oferta final e 17 Venda assinada (mesmas chaves das antigas, então
+oportunidades e regras de comissão continuam valendo). Etapas podem ser marcadas como "Subetapa" (numeração com letra).
+
 **Limite mensal de simulações (nov/2026):** cada login é um provedor e pode simular 3 vezes por mês; o domínio
 do e-mail soma até 6 (em e-mails gratuitos, conta por CNPJ). Zera no dia 1º. Ao travar, o provedor é levado a
 formalizar uma das simulações e vê o contato da equipe. O admin libera +1 simulação na ficha do provedor no CRM,

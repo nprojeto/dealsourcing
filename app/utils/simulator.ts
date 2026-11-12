@@ -37,6 +37,21 @@ export interface PerformancePayload {
 export interface Stage {
   key: string; name: string; position: number; is_won: boolean; is_lost: boolean; active: boolean; is_system: boolean
   description: string | null; sla_days: number | null; requires_assignee: boolean; requires_note: boolean; count?: number
+  sub_step?: boolean
+}
+
+/**
+ * Número exibido de cada etapa: subetapas usam letra a partir da anterior (ex.: 5a, 5b),
+ * sem alterar a numeração das demais. Etapas desativadas não são numeradas.
+ */
+export function stageNumbers(stages: { key: string; position: number; active?: boolean; sub_step?: boolean }[]): Record<string, string> {
+  const out: Record<string, string> = {}
+  let n = 0, sub = 0
+  for (const s of [...stages].filter((x) => x.active !== false).sort((a, b) => a.position - b.position)) {
+    if (s.sub_step && n > 0) { sub++; out[s.key] = `${n}${String.fromCharCode(96 + Math.min(sub, 26))}` }
+    else { n++; sub = 0; out[s.key] = String(n) }
+  }
+  return out
 }
 export interface OppItem {
   id: string; isp_id: string | null; stage_key: string; priority: string; origin: string; in_queue: boolean

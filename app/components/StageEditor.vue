@@ -1,17 +1,18 @@
 <script setup lang="ts">
+import { stageNumbers } from '~/utils/simulator'
 import type { Stage } from '~/utils/simulator'
 const api = useApi()
 const toast = useToast()
 const stages = ref<Stage[]>([])
 const loading = ref(true)
 const busy = ref('')
-const drafts = reactive<Record<string, { name: string; description: string; sla_days: number | ''; requires_assignee: boolean; requires_note: boolean }>>({})
+const drafts = reactive<Record<string, { name: string; description: string; sla_days: number | ''; requires_assignee: boolean; requires_note: boolean; sub_step: boolean }>>({})
 
 async function load() {
   loading.value = true
   try {
     stages.value = (await api.get<{ items: Stage[] }>('/crm/stages')).items
-    for (const s of stages.value) drafts[s.key] = { name: s.name, description: s.description ?? '', sla_days: s.sla_days ?? '', requires_assignee: s.requires_assignee, requires_note: s.requires_note }
+    for (const s of stages.value) drafts[s.key] = { name: s.name, description: s.description ?? '', sla_days: s.sla_days ?? '', requires_assignee: s.requires_assignee, requires_note: s.requires_note, sub_step: !!s.sub_step }
   } catch (e) { toast.error(errorMessage(e)) } finally { loading.value = false }
 }
 onMounted(load)
@@ -34,8 +35,13 @@ async function saveOrder() {
 }
 function dirty(s: Stage) {
   const d = drafts[s.key]; if (!d) return false
-  return d.name !== s.name || d.description !== (s.description ?? '') || String(d.sla_days) !== String(s.sla_days ?? '') || d.requires_assignee !== s.requires_assignee || d.requires_note !== s.requires_note
+  return d.name !== s.name || d.description !== (s.description ?? '') || String(d.sla_days) !== String(s.sla_days ?? '') || d.requires_assignee !== s.requires_assignee || d.requires_note !== s.requires_note || d.sub_step !== !!s.sub_step
 }
+/** Numeração como vai ficar, considerando a ordem e as subetapas ainda não salvas. */
+const previewNums = computed(() => stageNumbers([
+  ...ordered.value.map((s, i) => ({ key: s.key, position: i + 1, active: s.active, sub_step: drafts[s.key]?.sub_step ?? s.sub_step })),
+  ...terminal.value.map((s, i) => ({ key: s.key, position: 1000 + i, active: s.active })),
+]))
 async function save(s: Stage) {
   busy.value = s.key
   try { await api.put(`/admin/stages/${s.key}`, drafts[s.key]); toast.success(`Etapa "${drafts[s.key]!.name}" salva.`); await load() }
@@ -62,10 +68,10 @@ async function create() {
     <template v-else>
       <div class="table-wrap">
         <table class="table st">
-          <thead><tr><th>Ordem</th><th>Etapa</th><th title="Em branco usa o padrão geral">Alerta de parada</th><th>Exige responsável</th><th>Exige observação</th><th>Oport.</th><th /></tr></thead>
+          <thead><tr><th>Ordem</th><th>Etapa</th><th title="Em branco usa o padrão geral">Alerta de parada</th><th>Exige responsável</th><th>Exige observação</th><th title="Numerada com letra a partir da etapa anterior (ex.: 5a)">Subetapa</th><th>Oport.</th><th /></tr></thead>
           <tbody>
             <tr v-for="(s, i) in ordered" :key="s.key" :class="{ off: !s.active }">
-              <td class="nowrap"><span class="pos">{{ i + 1 }}</span>
+              <td class="nowrap"><span class="pos" :class="{ sub: drafts[s.key]?.sub_step }">{{ previewNums[s.key] ?? '–' }}</span>
                 <button class="icon-btn sm" :disabled="i === 0" aria-label="Subir" @click="moveUp(i, -1)"><AppIcon name="chevron-left" :size="16" style="transform:rotate(90deg)" /></button>
                 <button class="icon-btn sm" :disabled="i === ordered.length - 1" aria-label="Descer" @click="moveUp(i, 1)"><AppIcon name="chevron-right" :size="16" style="transform:rotate(90deg)" /></button></td>
               <td><input v-model="drafts[s.key]!.name" class="input sm" :aria-label="`Nome da etapa ${i + 1}`">
@@ -73,6 +79,7 @@ async function create() {
               <td><div class="suffix"><input v-model.number="drafts[s.key]!.sla_days" class="input sm num" type="number" min="1" max="365" placeholder="—" title="Em branco usa o padrão geral"><span>dias</span></div></td>
               <td><label class="switch"><input v-model="drafts[s.key]!.requires_assignee" type="checkbox"><span class="track" /></label></td>
               <td><label class="switch"><input v-model="drafts[s.key]!.requires_note" type="checkbox"><span class="track" /></label></td>
+              <td><label class="switch" :title="i === 0 ? 'A primeira etapa não pode ser subetapa' : 'Ex.: 5a'"><input v-model="drafts[s.key]!.sub_step" type="checkbox" :disabled="i === 0"><span class="track" /></label></td>
               <td>{{ s.count ?? 0 }}</td>
               <td class="nowrap">
                 <button class="btn btn-sm" :disabled="!dirty(s) || busy === s.key" @click="save(s)">Salvar</button>
@@ -80,11 +87,12 @@ async function create() {
               </td>
             </tr>
             <tr v-for="s in terminal" :key="s.key" class="term">
-              <td><span class="pos">{{ s.position }}</span></td>
+              <td><span class="pos">{{ previewNums[s.key] ?? '–' }}</span></td>
               <td><input v-model="drafts[s.key]!.name" class="input sm"><div class="small muted">Sistema · {{ s.is_won ? 'encerra como ganha' : 'encerra como perdida (exige motivo)' }}</div></td>
               <td class="muted small">—</td>
               <td><label class="switch"><input v-model="drafts[s.key]!.requires_assignee" type="checkbox"><span class="track" /></label></td>
               <td><label class="switch"><input v-model="drafts[s.key]!.requires_note" type="checkbox" :disabled="s.is_lost"><span class="track" /></label></td>
+              <td class="muted small">—</td>
               <td>{{ s.count ?? 0 }}</td>
               <td><button class="btn btn-sm" :disabled="!dirty(s) || busy === s.key" @click="save(s)">Salvar</button></td>
             </tr>
@@ -109,7 +117,10 @@ async function create() {
 
 <style scoped>
 .st td { padding: .5rem .7rem; }
+.st td:nth-child(2) .input { min-width: 300px; }
 .pos { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; background: var(--navy); color: #fff; font: 700 .72rem var(--font-head); margin-right: .25rem; }
+.pos { min-width: 24px; width: auto; padding: 0 .3rem; }
+.pos.sub { background: var(--blue); }
 .icon-btn.sm { width: 28px; height: 28px; }
 .input.sm { min-height: 36px; padding: .4rem .6rem; font-size: .9rem; }
 .num { width: 110px; }

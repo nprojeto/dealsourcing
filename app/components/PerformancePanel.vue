@@ -10,7 +10,7 @@ const funnel = computed(() => [
   { label: 'Provedores cadastrados', n: p.value.isps, rate: null as number | null },
   { label: 'Fizeram simulação', n: p.value.isps_simulated, rate: pct(p.value.isps_simulated, p.value.isps) },
   { label: 'Formalizaram interesse', n: p.value.isps_formalized, rate: pct(p.value.isps_formalized, p.value.isps_simulated) },
-  { label: 'Aquisição concluída', n: p.value.acquisitions, rate: pct(p.value.acquisitions, p.value.isps_formalized) },
+  { label: 'Venda assinada', n: p.value.acquisitions, rate: pct(p.value.acquisitions, p.value.isps_formalized) },
 ])
 const maxN = computed(() => Math.max(1, p.value.isps))
 
@@ -19,7 +19,7 @@ function monthLabel(ym: string) {
   return new Date(y!, (m ?? 1) - 1, 1).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', '')
 }
 function situation(i: ReferredIsp): { text: string; tone: string } {
-  if (i.won) return { text: 'Aquisição concluída', tone: 'success' }
+  if (i.won) return { text: 'Venda assinada', tone: 'success' }
   if (i.lost) return { text: 'Oportunidade encerrada', tone: '' }
   if (i.stage) return { text: i.stage, tone: 'info' }
   return { text: ISP_STATUS_LABEL[i.status as IspStatus] ?? i.status, tone: ISP_STATUS_TONE[i.status as IspStatus] ?? 'plain' }
@@ -33,7 +33,7 @@ function openIsp(i: ReferredIsp) { if (props.internal) navigateTo(`/crm/provedor
       <div class="card kpi"><div class="kpi-label">Provedores indicados</div><div class="kpi-value">{{ p.isps }}</div><div class="kpi-foot">cadastrados com o código</div></div>
       <div class="card kpi"><div class="kpi-label">Simulações</div><div class="kpi-value">{{ p.simulations }}</div><div class="kpi-foot">{{ p.isps_simulated }} provedor(es) simularam</div></div>
       <div class="card kpi ok"><div class="kpi-label">Interesses formalizados</div><div class="kpi-value">{{ p.isps_formalized }}</div><div class="kpi-foot">{{ p.opportunities_open }} em andamento · {{ p.meetings ?? 0 }} reunião(ões)</div></div>
-      <div class="card kpi navy"><div class="kpi-label">Aquisições concluídas</div><div class="kpi-value">{{ p.acquisitions }}</div><div class="kpi-foot">{{ p.lost }} encerrada(s) sem acordo</div></div>
+      <div class="card kpi navy"><div class="kpi-label">Vendas assinadas</div><div class="kpi-value">{{ p.acquisitions }}</div><div class="kpi-foot">{{ p.lost }} encerrada(s) sem acordo</div></div>
     </div>
     <p v-if="showAssigned && p.assigned_open" class="small muted" style="margin:0">Você também é responsável por <strong>{{ p.assigned_open }}</strong> oportunidade(s) em atendimento.</p>
 

@@ -58,6 +58,7 @@ async function loadRules() {
     rules.value = r.items; if (s) stages.value = s.items
   } catch (e) { toast.error(errorMessage(e)) }
 }
+const stageNum = computed(() => stageNumbers(stages.value))
 const triggerStages = computed(() => stages.value.filter((s) => s.active && !s.is_lost).sort((a, b) => a.position - b.position))
 const blank = () => ({ id: '', name: '', beneficiary_type: 'external', source: 'referral', referral_origin: 'any', role: '', trigger_stage: 'aquisicao_concluida', base: 'deal_value',
   percent: '' as string | number, fixed_amount: null as number | null, max_amount: null as number | null, payment_days: 30 as number | string, payment_terms: '', valid_from: '', valid_to: '', active: true })
@@ -266,7 +267,7 @@ function card(status: string) { tab.value = 'comissoes'; f.status = f.status ===
 
     <AppModal :open="rf.open" :title="rf.data.id ? 'Editar regra de comissão' : 'Nova regra de comissão'" :width="720" @close="rf.open = false">
       <div class="form-grid">
-        <div class="field full"><label for="rn">Nome<span class="req">*</span></label><input id="rn" v-model="rf.data.name" class="input" placeholder="Ex.: Parceiros — aquisição concluída">
+        <div class="field full"><label for="rn">Nome<span class="req">*</span></label><input id="rn" v-model="rf.data.name" class="input" placeholder="Ex.: Parceiros — venda assinada">
           <span v-if="rf.errors.name" class="err">{{ rf.errors.name }}</span></div>
         <div class="field"><label for="rbt">Quem recebe<span class="req">*</span></label>
           <select id="rbt" v-model="rf.data.beneficiary_type" class="select"><option value="external">Parceiros</option><option value="internal">Equipe interna</option></select></div>
@@ -282,7 +283,7 @@ function card(status: string) { tab.value = 'comissoes'; f.status = f.status ===
         <div v-if="rf.data.beneficiary_type === 'internal'" class="field"><label for="rrole">Somente o perfil</label>
           <select id="rrole" v-model="rf.data.role" class="select"><option value="">Qualquer perfil interno</option><option v-for="k in INTERNAL_ROLES" :key="k" :value="k">{{ ROLE_LABEL[k] }}</option></select></div>
         <div class="field"><label for="rts">Gera a comissão na etapa<span class="req">*</span></label>
-          <select id="rts" v-model="rf.data.trigger_stage" class="select"><option v-for="s in triggerStages" :key="s.key" :value="s.key">{{ s.position }}. {{ s.name }}</option></select>
+          <select id="rts" v-model="rf.data.trigger_stage" class="select"><option v-for="s in triggerStages" :key="s.key" :value="s.key">{{ stageNum[s.key] }}. {{ s.name }}</option></select>
           <span v-if="rf.errors.trigger_stage" class="err">{{ rf.errors.trigger_stage }}</span></div>
         <div class="field"><label for="rbase">Base de cálculo</label>
           <select id="rbase" v-model="rf.data.base" class="select"><option v-for="(l, k) in COMMISSION_BASE_LABEL" :key="k" :value="k">{{ l }}</option></select></div>

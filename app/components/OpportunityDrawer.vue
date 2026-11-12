@@ -43,6 +43,7 @@ async function refresh() { await load(true); emit('changed') }
 
 // ----- etapa -----
 const activeStages = computed(() => props.stages.filter((s) => s.active).sort((a, b) => a.position - b.position))
+const stageNum = computed(() => stageNumbers(props.stages))
 const move = reactive({ to: '', note: '', open: false, deal: null as number | null })
 const target = computed(() => props.stages.find((s) => s.key === move.to))
 function askMove(key: string) {
@@ -174,7 +175,7 @@ const formalizedIds = computed(() => new Set((d.value?.formalizations ?? []).map
       <div class="ctl">
         <div class="field"><label for="op-stage">Etapa</label>
           <select id="op-stage" class="select" :value="o.stage_key" :disabled="!d.can_edit || busy === 'move'" @change="askMove(($event.target as HTMLSelectElement).value); ($event.target as HTMLSelectElement).value = o.stage_key">
-            <option v-for="s in activeStages" :key="s.key" :value="s.key">{{ s.position }}. {{ s.name }}</option>
+            <option v-for="s in activeStages" :key="s.key" :value="s.key">{{ stageNum[s.key] }}. {{ s.name }}</option>
           </select></div>
         <div class="field"><label>Responsável</label>
           <div class="row" style="flex-wrap:nowrap">
@@ -247,7 +248,7 @@ const formalizedIds = computed(() => new Set((d.value?.formalizations ?? []).map
               <span class="badge" :class="COMMISSION_STATUS_TONE[c.status]">{{ COMMISSION_STATUS_LABEL[c.status] }}</span>
             </li>
           </ul>
-          <p v-else-if="d.can_assign" class="small muted" style="margin:0">As comissões são geradas quando a oportunidade chega à etapa definida nas regras (por padrão, a conclusão da aquisição).</p>
+          <p v-else-if="d.can_assign" class="small muted" style="margin:0">As comissões são geradas quando a oportunidade chega à etapa definida nas regras (por padrão, a venda assinada).</p>
         </section>
 
         <section>

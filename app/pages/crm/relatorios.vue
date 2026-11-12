@@ -82,7 +82,7 @@ const SERIES = [
   { key: 'registered', name: 'Cadastros', color: '#2D5BD7' },
   { key: 'simulations', name: 'Simulações', color: '#14A38B' },
   { key: 'formalizations', name: 'Formalizações', color: '#D98A1C' },
-  { key: 'won', name: 'Aquisições', color: '#B5428F' },
+  { key: 'won', name: 'Vendas assinadas', color: '#B5428F' },
 ] as const
 const chart = computed(() => {
   const items = d.value?.series.items ?? []
@@ -183,7 +183,7 @@ async function exportReport(kind: string) {
           <small>{{ n('open') }} oportunidade(s) em aberto · {{ n('overdue') }} com prazo vencido</small>
         </div>
         <div class="won">
-          <span>Aquisições concluídas no período</span>
+          <span>Vendas assinadas no período</span>
           <strong>{{ n('won') }}</strong>
           <small>{{ n('won_value') ? fmtBRLShort(n('won_value')) + ' em negócios' : 'sem valor informado' }}</small>
         </div>
@@ -210,7 +210,7 @@ async function exportReport(kind: string) {
       <div>
         <div class="eyebrow">Resultado</div>
         <div class="kgrid">
-          <div class="card kpi ok"><div class="kpi-label">Aquisições concluídas</div><div class="kpi-value">{{ n('won') }}</div><div class="kpi-foot">{{ fmtBRLShort(n('won_value')) }}</div></div>
+          <div class="card kpi ok"><div class="kpi-label">Vendas assinadas</div><div class="kpi-value">{{ n('won') }}</div><div class="kpi-foot">{{ fmtBRLShort(n('won_value')) }}</div></div>
           <div class="card kpi bad"><div class="kpi-label">Oportunidades perdidas</div><div class="kpi-value">{{ n('lost') }}</div><div class="kpi-foot">no período</div></div>
           <div class="card kpi"><div class="kpi-label">Taxa de conversão</div><div class="kpi-value">{{ pctTxt(K.win_rate) }}</div><div class="kpi-foot">concluídas ÷ (concluídas + perdidas)</div></div>
           <div class="card kpi"><div class="kpi-label">Ciclo médio</div><div class="kpi-value">{{ K.avg_cycle_days === null ? '—' : `${K.avg_cycle_days} d` }}</div><div class="kpi-foot">da entrada à conclusão</div></div>

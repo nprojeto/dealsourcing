@@ -18,6 +18,7 @@ const f = reactive({
 const items = ref<OppItem[]>([])
 const summary = ref<Summary>({ open: 0, queue: 0, overdue: 0, stale: 0, mine: 0 })
 const stages = ref<Stage[]>([])
+const stageNum = computed(() => stageNumbers(stages.value))
 const assignees = ref<Assignee[]>([])
 const loading = ref(false)
 const showClosed = ref(false)
@@ -163,7 +164,7 @@ const chips = computed(() => [
       <section v-for="c in columns" :key="c.stage.key" class="col" :class="{ over: over === c.stage.key, won: c.stage.is_won, lost: c.stage.is_lost }"
         @dragover.prevent="over = c.stage.key" @dragleave="over = over === c.stage.key ? '' : over" @drop.prevent="onDrop(c.stage)">
         <header class="col-head">
-          <span class="pos">{{ c.stage.position }}</span>
+          <span class="pos">{{ stageNum[c.stage.key] }}</span>
           <strong :title="c.stage.description ?? ''">{{ c.stage.name }}</strong>
           <span class="n">{{ c.items.length }}</span>
         </header>
