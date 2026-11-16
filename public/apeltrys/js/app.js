@@ -47,9 +47,22 @@ for (const s of ISPS) s.key=ispKey(s);
 const ISP_BY_KEY = new Map(ISPS.map(s=>[s.key,s]));
 const ISP_BY_MUN = new Map();
 for (const s of ISPS) if (s.ibge){ if(!ISP_BY_MUN.has(s.ibge)) ISP_BY_MUN.set(s.ibge,[]); ISP_BY_MUN.get(s.ibge).push(s); }
+// presença por município (Anatel, acessos de banda larga fixa por CNPJ): [{id, n, a}] com n = mês de referência, a = 12 meses antes
+const PRES = DATA.pres||{}, PREF = DATA.pres_ref||null, DENS = DATA.dens||{};
+const PRES_BY_MUN = new Map();
+for (const s of ISPS){
+  const f = PRES[String(s.cnpj||'').replace(/\D/g,'')]; s.pres=null; s.presTot=0; s.npres=0;
+  if (f){ const L=[]; for(let k=0;k<f.length;k+=3) if(MUN.has(f[k])) L.push({id:f[k],n:f[k+1],a:f[k+2]});
+    if (L.length){ s.pres=L; s.presTot=L.reduce((x,p)=>x+p.n,0); s.npres=L.length;
+      for (const p of L){ if(!PRES_BY_MUN.has(p.id)) PRES_BY_MUN.set(p.id,[]); PRES_BY_MUN.get(p.id).push([s,p.n]); } } }
+  // onde o ponto do ISP aparece: sede; sem sede, a cidade com mais clientes
+  s.loc = s.ibge || (s.pres && (s.pres.find(p=>MUN.get(p.id)?.c)||{}).id) || null;
+}
+const ymLabel = ym => { if(!ym) return ''; const [y,m]=ym.split('-'); return ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][+m-1]+'/'+y; };
+const PREF_LBL = PREF ? ymLabel(PREF.ref) : '';
 
 // ---------- state / params ----------
-const DEFAULTS = {t1:5000,t2:1000,cap:500000,skyMin:50000,skyRule:true,alaresMin:100,
+const DEFAULTS = {t1:5000,t2:1000,cap:500000,skyMin:50000,skyRule:true,alaresMin:100,pres:true,presMin:50,
   nb:{nio:true,sky:true,alares:true},on:{nio:true,sky:true,alares:true},custom:[],excl:(DATA.excl_padrao||[]).map(i=>ISPS[i]&&ISPS[i].key).filter(Boolean)};
 let P = JSON.parse(JSON.stringify(DEFAULTS));
 // parâmetros ficam no servidor (compartilhados pela gestão); exclusões guardadas pela chave do ISP
@@ -94,6 +107,16 @@ function compute(){
     const st = s.ibge ? (MSTAT.get(s.ibge)||{}) : {};
     const by = {};
     for (const b of BUY){ if(!b.on) continue; if (st[b.id]) by[b.id]=st[b.id]; }
+    const via={};
+    // presença: cidades onde o ISP tem clientes (Anatel) contam além da sede
+    if (P.pres && s.pres) for (const p of s.pres){
+      if (p.n < P.presMin) break;            // lista em ordem decrescente de clientes
+      if (p.id===s.ibge) continue;
+      const o2=MSTAT.get(p.id); if(!o2) continue;
+      for (const b of BUY){ if(!b.on) continue; const t=o2[b.id]; if(!t) continue;
+        const nt = t==='A'?'PA':'PV'; if (RANK[nt] > (RANK[by[b.id]]||0)){ by[b.id]=nt; via[b.id]=p; } }
+    }
+    s.via=via;
     if (P.skyRule && P.on.sky && !by.sky && s.max>=P.skyMin) by.sky='S';
     s.by=by;
     const n=Object.keys(by).length;
@@ -104,16 +127,19 @@ function compute(){
     s.tier = s.excl ? 'TX' : (n===0||s.capped) ? 'T0' : s.max>=P.t1 ? 'T1' : s.max>=P.t2 ? 'T2' : 'T3';
   }
 }
+const RANK={A:5,PA:4,V:3,PV:2,S:1};
 const TIERNAME={T1:'Tier 1',T2:'Tier 2',T3:'Tier 3',T0:'Sem comprador',TX:'Excluído'};
 function tierHtml(s){ const t=s.tier; let lbl=TIERNAME[t]; if(t==='T0'&&s.capped&&s.nBuy) lbl='Acima do teto'; return `<span class="tier ${t}">${lbl}</span>`; }
 function buyerBadges(by){
   return BUY.filter(b=>by[b.id]).map(b=>{const t=by[b.id];
     if(t==='A') return `<span class="badge b-A" style="background:${b.color}" title="${esc(b.name)} atua no município sede">${esc(b.name)}</span>`;
+    if(t==='PA') return `<span class="badge b-A b-P" style="background:${b.color}" title="Tem clientes em município onde ${esc(b.name)} atua (Anatel)">${esc(b.name)} · clientes</span>`;
+    if(t==='PV') return `<span class="badge b-V b-P" style="color:${b.color}" title="Tem clientes em município vizinho à área de ${esc(b.name)} (Anatel)">${esc(b.name)} · clientes viz.</span>`;
     if(t==='V') return `<span class="badge b-V" style="color:${b.color}" title="Sede em município vizinho à área de ${esc(b.name)}">${esc(b.name)} · viz.</span>`;
     return `<span class="badge b-S" title="Sky compra fora da área se ≥ ${fmt(P.skyMin)} assinantes (TBC)">Sky ≥${fmt(P.skyMin/1000)}k</span>`;
   }).join('');
 }
-const BYLBL={A:'Atua',V:'Vizinho',S:'Fora da área (≥ corte Sky)'};
+const BYLBL={A:'Atua',V:'Vizinho',PA:'Tem clientes na área',PV:'Tem clientes em vizinho',S:'Fora da área (≥ corte Sky)'};
 
 // ---------- sidebar ----------
 function renderBuyers(){
@@ -152,9 +178,15 @@ document.getElementById('cbAdd').onclick=()=>{
   update();
 };
 for (const k of ['t1','t2','cap']){ const i=document.getElementById(k); i.value=P[k]; i.onchange=()=>{P[k]=Math.max(0,+i.value||0);update();}; }
+const presOn=document.getElementById('presOn'), presMin=document.getElementById('presMin'), presBox=document.getElementById('presBox');
+function syncPres(){ presOn.checked=!!P.pres; presMin.value=P.presMin; presMin.disabled=!P.pres; }
+if(PREF){ syncPres(); document.getElementById('presInfo').textContent=`Base ${PREF_LBL}: ${fmt(PREF.isps)} ISPs com clientes por cidade.`;
+  presOn.onchange=()=>{P.pres=presOn.checked; syncPres(); update();};
+  presMin.onchange=()=>{P.presMin=Math.max(1,Math.round(+presMin.value||1)); presMin.value=P.presMin; update();};
+} else presBox.style.display='none';
 const fUF=document.getElementById('fUF'); UFS.forEach(u=>fUF.add(new Option(u,u))); fUF.onchange=()=>{update(); if(fUF.value) zoomToUF(fUF.value);};
 document.getElementById('fFlag').onchange=update;
-document.getElementById('reset').onclick=()=>{ if(!confirm('Restaurar os parâmetros padrão para toda a equipe de gestão?')) return; const c=P.custom;P=JSON.parse(JSON.stringify(DEFAULTS));P.custom=c;for(const k of ['t1','t2','cap'])document.getElementById(k).value=P[k];update();};
+document.getElementById('reset').onclick=()=>{ if(!confirm('Restaurar os parâmetros padrão para toda a equipe de gestão?')) return; const c=P.custom;P=JSON.parse(JSON.stringify(DEFAULTS));P.custom=c;for(const k of ['t1','t2','cap'])document.getElementById(k).value=P[k];if(PREF)syncPres();update();};
 
 function passGlobal(s){ if(fUF.value && s.uf!==fUF.value) return false; if(document.getElementById('fFlag').checked && s.flag!==1) return false; return true; }
 
@@ -170,7 +202,7 @@ function renderKpis(){
    <div class="kpi"><div class="l">ISPs Tier 2 (${fmt(P.t2)}–${fmt(P.t1-1)})</div><div class="v" style="color:#b07c00">${fmt(t2.length)}</div><div class="s">${fmt(sum(t2))} assinantes</div></div>
    <div class="kpi"><div class="l">ISPs Tier 3 (com comprador, &lt; ${fmt(P.t2)})</div><div class="v">${fmt(t3.length)}</div><div class="s">${fmt(sum(t3))} assinantes</div></div>
    <div class="kpi"><div class="l">Municípios-alvo</div><div class="v">${fmt(munA+munV)}</div><div class="s">${fmt(munA)} onde atuam · ${fmt(munV)} vizinhos</div></div>
-   <div class="kpi"><div class="l">ISPs na base Anatel${fUF.value?' ('+fUF.value+')':''}</div><div class="v">${fmt(L.length)}</div><div class="s">${fmt(noSede)} sem município sede</div></div>`;
+   <div class="kpi"><div class="l">ISPs na base Anatel${fUF.value?' ('+fUF.value+')':''}</div><div class="v">${fmt(L.length)}</div><div class="s">${fmt(noSede)} sem município sede${PREF?` · ${fmt(L.filter(s=>!s.ibge&&s.loc).length)} no mapa pela presença`:''}</div></div>`;
 }
 
 // ---------- MAP ----------
@@ -179,6 +211,7 @@ const munFeat=topojson.feature(TOPO_MUN,TOPO_MUN.objects[Object.keys(TOPO_MUN.ob
 // corrige polígonos com orientação invertida (d3 os interpretaria como o globo inteiro)
 for (const f of munFeat){ if (d3.geoArea(f)>2*Math.PI){ const g=f.geometry; const rv=p=>p.map(r=>r.slice().reverse());
   if(g.type==='Polygon') g.coordinates=rv(g.coordinates); else if(g.type==='MultiPolygon') g.coordinates=g.coordinates.map(rv); } }
+const MUNIDX=new Map(munFeat.map((f,i)=>[+f.properties.i,i]));
 const ufFeat=topojson.feature(TOPO_UF,TOPO_UF.objects[Object.keys(TOPO_UF.objects)[0]]).features;
 const ufMesh=topojson.mesh(TOPO_UF,TOPO_UF.objects[Object.keys(TOPO_UF.objects)[0]]);
 const brFC={type:'FeatureCollection',features:ufFeat};
@@ -199,9 +232,11 @@ function colorFor(id){
     const pal=anyA?['#9ec5ee','#5b93d3','#2a5fa8','#163a6e']:['#e3eefb','#c7dcf4','#a9c7ec','#8bb2e2']; return pal[Math.min(n,4)-1]; }
   if(mode==='isp'){ const L=(ISP_BY_MUN.get(id)||[]).filter(s=>s.tier==='T1'||s.tier==='T2'); if(!L.length) return o?'#eef2f7':null;
     return L.some(s=>s.tier==='T1')?'#b2f2bb':'#ffec99'; }
+  if(mode==='dens'){ const v=DENS[id]; if(v==null) return null; const i=DENS_BINS.findIndex(x=>v<x); return DENS_PAL[i<0?DENS_PAL.length-1:i]; }
   const b=BUY.find(x=>x.id===mode); if(!b||!o||!o[mode]) return null;
   return o[mode]==='A'? b.color : hexA(b.color,.32);
 }
+const DENS_BINS=[15,25,35,50,70], DENS_PAL=['#fff3bf','#ffd8a8','#ffa94d','#f76707','#c2410c','#7c2d12'];
 function hexA(h,a){const n=parseInt(h.slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;}
 let selMun=null, selIsp=null, dotList=[];
 function draw(){
@@ -214,17 +249,21 @@ function draw(){
     const c=colorFor(id); ctx.fillStyle=c||'#ffffff'; ctx.fill(paths[i]);
     if(showB){ctx.strokeStyle='rgba(0,0,0,.22)';ctx.lineWidth=.5/T.k;ctx.stroke(paths[i]);}
   }
+  if(selIsp && selIsp.pres){ const mx=selIsp.pres[0].n||1;
+    for(const p of selIsp.pres){ const i=MUNIDX.get(p.id); if(i==null) continue;
+      ctx.fillStyle=`rgba(214,51,108,${(.28+.62*Math.sqrt(p.n/mx)).toFixed(2)})`; ctx.fill(paths[i]);
+      ctx.strokeStyle='rgba(150,20,70,.9)'; ctx.lineWidth=1.1/T.k; ctx.stroke(paths[i]); } }
   ctx.strokeStyle='#7d8590'; ctx.lineWidth=.9/T.k; ctx.stroke(ufPath);
   if(selMun!=null){ const i=munFeat.findIndex(f=>+f.properties.i===selMun); if(i>=0){ctx.strokeStyle='#111';ctx.lineWidth=2/T.k;ctx.stroke(paths[i]);}}
   // dots
   dotList=[];
   const showD=document.getElementById('showDots').checked;
-  if(showD || (selIsp && selIsp.ibge)){
+  if(showD || (selIsp && selIsp.loc)){
     const w=document.getElementById('dotsWhich').value;
-    const L=ISPS.filter(s=>s.ibge && (s===selIsp || (showD && passGlobal(s) && (w==='EVERY'||(w==='ALL'&&s.tier!=='T0')||(w==='T12'&&(s.tier==='T1'||s.tier==='T2'))||(w==='T1'&&s.tier==='T1'))))).sort((a,b)=>b.max-a.max);
+    const L=ISPS.filter(s=>s.loc && (s===selIsp || (showD && passGlobal(s) && (w==='EVERY'||(w==='ALL'&&s.tier!=='T0')||(w==='T12'&&(s.tier==='T1'||s.tier==='T2'))||(w==='T1'&&s.tier==='T1'))))).sort((a,b)=>b.max-a.max);
     const off=new Map();
-    for(const s of L){ const m=MUN.get(s.ibge); if(!m||!m.c) continue; const p=proj(m.c);
-      const k=off.get(s.ibge)||0; off.set(s.ibge,k+1);
+    for(const s of L){ const m=MUN.get(s.loc); if(!m||!m.c) continue; const p=proj(m.c);
+      const k=off.get(s.loc)||0; off.set(s.loc,k+1);
       const zf=Math.min(1,Math.sqrt(T.k)/3); // pontos crescem um pouco com o zoom, em pixels de tela
       const ang=k*2.4, rr=k? (4+3*Math.sqrt(k))*zf/T.k:0;
       const x=p[0]+Math.cos(ang)*rr, y=p[1]+Math.sin(ang)*rr;
@@ -242,6 +281,7 @@ function renderColorBy(){ const v=colorByEl.value||'count'; colorByEl.innerHTML=
   colorByEl.add(new Option('Nº de compradores interessados','count'));
   BUY.filter(b=>b.on).forEach(b=>colorByEl.add(new Option('Área: '+b.name,b.id)));
   colorByEl.add(new Option('Municípios com ISP Tier 1/2','isp'));
+  if(Object.keys(DENS).length) colorByEl.add(new Option('Densidade de banda larga (acessos/100 domicílios)','dens'));
   colorByEl.value=[...colorByEl.options].some(o=>o.value===v)?v:'count'; }
 colorByEl.onchange=()=>{draw();renderLegend();};
 document.getElementById('showDots').onchange=()=>{draw();renderLegend();};
@@ -251,7 +291,11 @@ function renderLegend(){
   if(mode==='count'){ h+='<b>Municípios</b><div class="mini muted">escuro = algum comprador atua · claro = só vizinho</div>';
     ['1','2','3','4+'].forEach((n,i)=>h+=`<div class="it"><span class="sw" style="background:${['#9ec5ee','#5b93d3','#2a5fa8','#163a6e'][i]}"></span><span class="sw" style="background:${['#e3eefb','#c7dcf4','#a9c7ec','#8bb2e2'][i]}"></span>${n} comprador(es)</div>`); }
   else if(mode==='isp'){ h+='<b>Municípios</b><div class="it"><span class="sw" style="background:#b2f2bb"></span>Sede de ISP Tier 1</div><div class="it"><span class="sw" style="background:#ffec99"></span>Sede de ISP Tier 2</div><div class="it"><span class="sw" style="background:#eef2f7"></span>Alvo sem ISP Tier 1/2 sediado</div>'; }
+  else if(mode==='dens'){ h+=`<b>Densidade de banda larga</b><div class="mini muted">acessos por 100 domicílios · Anatel ${esc(ymLabel(PREF&&PREF.dens_ref))} · Brasil ≈ 27</div>`;
+    const lb=['< 15','15 a 25','25 a 35','35 a 50','50 a 70','70 ou mais']; DENS_PAL.forEach((c,i)=>h+=`<div class="it"><span class="sw" style="background:${c}"></span>${lb[i]}</div>`);
+    h+='<div class="mini muted">Baixa = mercado com espaço para crescer.</div>'; }
   else { const b=BUY.find(x=>x.id===mode); h+=`<b>${esc(b.name)}</b><div class="it"><span class="sw" style="background:${b.color}"></span>Atua</div><div class="it"><span class="sw" style="background:${hexA(b.color,.32)}"></span>Vizinho</div>`; }
+  if(selIsp && selIsp.pres) h+=`<div style="margin-top:6px"><b>${esc(selIsp.nome)}</b></div><div class="it"><span class="sw" style="background:rgba(214,51,108,.85)"></span>Cidades com clientes (mais forte = mais clientes)</div>`;
   if(document.getElementById('showDots').checked) h+=`<div style="margin-top:6px"><b>Sede do ISP</b> (tamanho = assinantes)</div><div class="it"><span class="dot" style="background:var(--t1)"></span>Tier 1 <span class="dot" style="background:var(--t2);margin-left:6px"></span>Tier 2 <span class="dot" style="background:#868e96;margin-left:6px"></span>Tier 3</div>`;
   document.getElementById('legend').innerHTML=h;
 }
@@ -278,7 +322,7 @@ let moveRAF=null;
 canvas.addEventListener('mousemove',ev=>{ if(moveRAF) return; moveRAF=requestAnimationFrame(()=>{moveRAF=null; const h=hit(ev);
   if(h.isp){ tip.innerHTML=`<b>${esc(h.isp.nome)}</b> · ${fmt(h.isp.max)} assin. · ${TIERNAME[h.isp.tier]}`; }
   else if(h.mun){ const m=MUN.get(h.mun); const o=MSTAT.get(h.mun)||{}; const n=(ISP_BY_MUN.get(h.mun)||[]).length;
-    tip.innerHTML=`<b>${esc(m?m.n:h.mun)} – ${m?m.uf:''}</b>${Object.keys(o).length?' · '+BUY.filter(b=>o[b.id]).map(b=>b.name+(o[b.id]==='V'?' (viz.)':'')).join(', '):''} · ${n} ISP(s) sediado(s)`; }
+    tip.innerHTML=`<b>${esc(m?m.n:h.mun)} – ${m?m.uf:''}</b>${Object.keys(o).length?' · '+BUY.filter(b=>o[b.id]).map(b=>b.name+(o[b.id]==='V'?' (viz.)':'')).join(', '):''} · ${n} ISP(s) sediado(s)${DENS[h.mun]!=null?' · densidade '+fmt1(DENS[h.mun]):''}${selIsp&&selIsp.pres?(()=>{const p=selIsp.pres.find(x=>x.id===h.mun);return p?` · <b>${fmt(p.n)} clientes de ${esc(selIsp.nome)}</b>`:'';})():''}`; }
   else { tip.style.display='none'; return; }
   tip.style.display='block'; tip.style.left=(h.sx+14)+'px'; tip.style.top=(h.sy+10)+'px'; });});
 canvas.addEventListener('mouseleave',()=>tip.style.display='none');
@@ -292,11 +336,11 @@ document.getElementById('munSearch').onchange=e=>{ const v=e.target.value; const
 
 // ---------- detail panels ----------
 function showMun(id){
-  selMun=id; selIsp=null; showDetailPanel(); draw();
+  selMun=id; selIsp=null; showDetailPanel(); draw(); renderLegend();
   const m=MUN.get(id); const o=MSTAT.get(id)||{};
   const L=(ISP_BY_MUN.get(id)||[]).slice().sort((a,b)=>b.max-a.max);
   const al=DATA.alares[id];
-  let h=`<h2>${esc(m.n)} – ${m.uf}</h2><div class="muted mini">IBGE ${m.id} · Código (1º CEP) ${m.cep}</div>`;
+  let h=`<h2>${esc(m.n)} – ${m.uf}</h2><div class="muted mini">IBGE ${m.id} · Código (1º CEP) ${m.cep}${DENS[id]!=null?` · densidade <b>${fmt1(DENS[id])}</b> acessos/100 domicílios`:''}</div>`;
   h+=`<div class="sec"><h4>Compradores</h4>`;
   const rows=BUY.map(b=>{ const inCore=b.core.has(id), inNb=b.nbSet.has(id);
     const st=inCore?'Atua':inNb?'Vizinho':'—'; const viaNb = inNb? [...m.nb].filter(n=>b.core.has(n)).map(n=>MUN.get(n)?.n).filter(Boolean):[];
@@ -306,6 +350,8 @@ function showMun(id){
   h+=rows+`</div>`;
   h+=`<div class="sec"><h4>ISPs sediados aqui (${L.length})</h4>`;
   h+= L.length? `<table><tbody>${L.map(s=>`<tr data-isp="${s.i}"><td>${esc(s.nome)}<div>${buyerBadges(s.by)}</div></td><td class="n">${fmt(s.max)}</td><td>${tierHtml(s)}</td></tr>`).join('')}</tbody></table>` : '<div class="muted">Nenhum ISP da base tem sede neste município.</div>';
+  const PL=(PRES_BY_MUN.get(id)||[]).slice().sort((a,b)=>b[1]-a[1]);
+  if(PREF) h+=`</div><div class="sec"><h4>ISPs com clientes aqui · Anatel ${esc(PREF_LBL)} (${PL.length})</h4>`+(PL.length?`<table><tbody>${PL.slice(0,15).map(([s,n])=>`<tr data-isp="${s.i}"><td>${esc(s.nome)}<div>${buyerBadges(s.by)}</div></td><td class="n">${fmt(n)}</td><td>${tierHtml(s)}</td></tr>`).join('')}</tbody></table>${PL.length>15?`<div class="mini muted">+ ${PL.length-15} ISP(s)</div>`:''}`:'<div class="muted">Nenhum ISP da base com clientes aqui.</div>');
   h+=`</div><div class="sec"><h4>Municípios vizinhos (${m.nb.length})</h4><div class="mini">${m.nb.map(n=>{const x=MUN.get(n);const c=(ISP_BY_MUN.get(n)||[]).length;return x?`<a href="#" data-mun="${n}">${esc(x.n)}${x.uf!==m.uf?' ('+x.uf+')':''}</a>${c?` <span class="muted">(${c})</span>`:''}`:n}).join(', ')}</div><div class="mini muted">(n) = ISPs sediados</div></div>`;
   const d=document.getElementById('detail'); d.innerHTML=h; bindDetail(d,'detail');
   emit('apeltrys:municipio',munInfo(id));
@@ -323,23 +369,43 @@ function spark(m){ const w=300,h=50,mx=Math.max(...m),mn=Math.min(...m); const s
 function socio(s,lbl){ if(!s||!s[0]) return ''; const tel=[s[1],s[2]].filter(Boolean).join(' ');
   return `<div class="kv" style="margin-bottom:6px"><div>${lbl}</div><div><b>${esc(s[0])}</b></div>${tel?`<div>Celular</div><div>(${esc(s[1])}) ${esc(s[2])}</div>`:''}${s[3]?`<div>E-mail</div><div><a href="mailto:${esc(s[3].toLowerCase())}">${esc(s[3].toLowerCase())}</a></div>`:''}</div>`; }
 /** Leva para a aba Mapa, com zoom na cidade sede e o ISP destacado. */
-function goToIspMap(s){ goTab('mapa'); showIsp(s,'detail'); requestAnimationFrame(()=>{ zoomToMun(s.ibge); draw(); }); }
+function goToIspMap(s){ goTab('mapa'); showIsp(s,'detail'); requestAnimationFrame(()=>{ zoomToIsp(s); draw(); renderLegend(); }); }
+/** Zoom: cidades onde o ISP tem clientes (com a sede); sem presença, a sede e vizinhos. */
+function zoomToIsp(s){
+  const ids=new Set(s.pres? s.pres.slice(0,300).map(p=>p.id):[]); if(s.ibge) ids.add(s.ibge);
+  if(ids.size<=1){ if(s.loc) zoomToMun(s.loc); return; }
+  const fs=[...ids].map(id=>munFeat[MUNIDX.get(id)]).filter(Boolean);
+  if(fs.length) zoomToBounds(d3.geoPath(proj).bounds({type:'FeatureCollection',features:fs}),60);
+}
+function presSection(s){
+  if(!PREF) return '';
+  if(!s.pres) return `<div class="sec"><h4>Onde tem clientes</h4><div class="muted mini">${s.cnpj?'CNPJ sem acessos na base da Anatel ('+esc(PREF_LBL)+').':'Sem CNPJ: não dá para cruzar com a Anatel.'}</div></div>`;
+  const top=s.pres.slice(0,12), ag=s.pres.reduce((x,p)=>x+p.a,0);
+  const dl=(n,a)=>{ if(!a) return '<span class="muted">novo</span>'; const d=n-a; return `<span class="${d>=0?'up':'down'}">${d>=0?'+':''}${fmt(d)}</span>`; };
+  return `<div class="sec pres"><h4>Onde tem clientes · Anatel ${esc(PREF_LBL)}</h4>
+    <div class="mini" style="margin-bottom:6px"><b>${fmt(s.presTot)}</b> clientes em <b>${fmt(s.npres)}</b> cidade(s)${ag?` · 12 meses antes: ${fmt(ag)}`:''}</div>
+    <table class="ptab"><thead><tr><th>Cidade</th><th class="n">Clientes</th><th class="n">12 meses</th></tr></thead><tbody>${top.map(p=>{const x=MUN.get(p.id);
+      return `<tr><td><a href="#" data-mun="${p.id}">${esc(x.n)} – ${x.uf}</a>${p.id===s.ibge?' <span class="mini muted">(sede)</span>':''}${p.n<P.presMin?' <span class="mini muted" title="Abaixo do mínimo de clientes: não conta para comprador">·</span>':''}</td><td class="n">${fmt(p.n)}</td><td class="n">${dl(p.n,p.a)}</td></tr>`;}).join('')}</tbody></table>
+    ${s.npres>top.length?`<div class="mini muted">+ ${fmt(s.npres-top.length)} cidade(s) no mapa</div>`:''}</div>`;
+}
 function showIsp(s,target){
-  selIsp=s; if(s.ibge) selMun=s.ibge; showDetailPanel(); if(target==='detail') draw();
-  const m=s.ibge?MUN.get(s.ibge):null;
+  selIsp=s; selMun=s.ibge||null; showDetailPanel(); if(target==='detail'){ draw(); renderLegend(); }
+  const m=s.ibge?MUN.get(s.ibge):null, ml=s.loc?MUN.get(s.loc):null;
   let h=`<h2>${esc(s.nome)}</h2><div class="muted">${esc(s.rs||'')}</div><div style="margin:6px 0">${tierHtml(s)} ${buyerBadges(s.by)}</div>`;
-  h+= m ? `<button class="btn gomap" data-goto="${s.i}">${PIN} ${target==='detail'?'Centralizar no mapa':'Ver no mapa'} <span>${esc(m.n)} – ${m.uf}</span></button>`
-        : `<div class="nomap">${PIN} Sem cidade sede na base: não aparece no mapa.</div>`;
+  h+= ml ? `<button class="btn gomap" data-goto="${s.i}">${PIN} ${target==='detail'?'Centralizar no mapa':'Ver no mapa'} <span>${s.npres>1?fmt(s.npres)+' cidades com clientes':esc(ml.n)+' – '+ml.uf}</span></button>`
+        : `<div class="nomap">${PIN} Sem cidade sede nem clientes na Anatel: não aparece no mapa.</div>`;
   h+=`<div class="sec"><div class="kv">
     <div>CNPJ</div><div>${esc(s.cnpj)||'–'}</div>
-    <div>Sede</div><div>${m?`<a href="#" data-mun="${m.id}">${esc(m.n)} – ${m.uf}</a>`:(s.cid?esc(s.cid+' – '+s.uf):'<span class="muted">sem município sede na base</span>')}</div>
+    <div>Sede</div><div>${m?`<a href="#" data-mun="${m.id}">${esc(m.n)} – ${m.uf}</a>`:(s.cid?esc(s.cid+' – '+s.uf):'<span class="muted">sem município sede na base</span>')}${!m&&ml?`<div class="mini muted">No mapa, o ponto fica em ${esc(ml.n)} – ${ml.uf} (cidade com mais clientes)</div>`:''}</div>
     <div>Porte</div><div>${esc(s.porte)||'–'}</div>
     <div>Assinantes (máx.)</div><div><b>${fmt(s.max)}</b></div>
     <div>Tendência</div><div>${s.tend>0?'+':''}${fmt1(s.tend)} assin./mês</div>
     <div>Flag col. O</div><div>${s.flag}</div>
     ${s.status?`<div>Status</div><div>${esc(s.status)}</div>`:''}${s.quem?`<div>Quem</div><div>${esc(s.quem)}</div>`:''}
   </div>${spark(s.m)}</div>`;
-  h+=`<div class="sec"><h4>Por que é alvo</h4>${s.nBuy? BUY.filter(b=>s.by[b.id]).map(b=>`<div>• <b>${esc(b.name)}</b>: ${BYLBL[s.by[b.id]]}${s.by[b.id]==='S'?` (${fmt(s.max)} ≥ ${fmt(P.skyMin)})`:''}</div>`).join(''):'<div class="muted">Sem comprador pelos parâmetros atuais.</div>'}${s.capped?`<div class="muted">Acima do teto de ${fmt(P.cap)} assinantes (operadora/consolidador).</div>`:''}</div>`;
+  h+=`<div class="sec"><h4>Por que é alvo</h4>${s.nBuy? BUY.filter(b=>s.by[b.id]).map(b=>{ const v=s.via&&s.via[b.id]; const vm=v?MUN.get(v.id):null;
+    return `<div>• <b>${esc(b.name)}</b>: ${BYLBL[s.by[b.id]]}${vm?` em <a href="#" data-mun="${vm.id}">${esc(vm.n)} – ${vm.uf}</a> (${fmt(v.n)} clientes)`:''}${s.by[b.id]==='S'?` (${fmt(s.max)} ≥ ${fmt(P.skyMin)})`:''}</div>`; }).join(''):'<div class="muted">Sem comprador pelos parâmetros atuais.</div>'}${s.capped?`<div class="muted">Acima do teto de ${fmt(P.cap)} assinantes (operadora/consolidador).</div>`:''}</div>`;
+  h+=presSection(s);
   h+=`<div class="sec funbox"><h4>Funil comercial</h4>${s.fun
     ? `<div class="fun in">No funil · ${esc(stageName(s.fun.stage_key))}</div><button class="btn ghost" data-open="${esc(s.fun.opportunity_id)}" style="margin-top:6px">Abrir no funil</button>`
     : s.excl ? '<div class="muted">Excluído da análise: reinclua para enviar.</div>'
@@ -352,10 +418,11 @@ function showIsp(s,target){
 
 // ---------- ISP table ----------
 const ISPCOLS=[
-  {k:'map',l:'Mapa',f:s=>s.ibge?`<button class="pinbtn" data-goto="${s.i}" title="Ver no mapa">${PIN}</button>`:'<span class="muted" title="Sem cidade sede na base">–</span>'},
+  {k:'map',l:'Mapa',f:s=>s.loc?`<button class="pinbtn" data-goto="${s.i}" title="Ver no mapa">${PIN}</button>`:'<span class="muted" title="Sem sede nem clientes na Anatel">–</span>'},
   {k:'nome',l:'ISP',f:s=>`<b>${esc(s.nome)}</b><div class="mini muted">${esc(s.rs)}${s.cnpj?' · '+esc(s.cnpj):''}</div>`},
   {k:'uf',l:'UF',f:s=>esc(s.uf)},
   {k:'cid',l:'Sede',f:s=>s.ibge?esc(MUN.get(s.ibge).n):'<span class="muted">–</span>'},
+  {k:'npres',l:'Cidades c/ clientes',n:1,f:s=>s.npres?fmt(s.npres):'<span class="muted">–</span>'},
   {k:'porte',l:'Porte',f:s=>esc(s.porte)},
   {k:'max',l:'Assinantes',n:1,f:s=>fmt(s.max)},
   {k:'tend',l:'Tend./mês',n:1,f:s=>(s.tend>0?'+':'')+fmt1(s.tend)},
@@ -376,7 +443,7 @@ function ispFiltered(){
     && (!ff || (ff==='in'?!!s.fun:!s.fun))
     && (!q || norm([s.nome,s.rs,s.cnpj,s.cid,s.uf,s.s1[0],s.s2[0]].join(' ')).includes(q)));
   const k=ispSort.k,d=ispSort.d;
-  L.sort((a,b)=>{ let x=a[k],y=b[k]; if(k==='tier'){x=tierOrd[x];y=tierOrd[y];} if(k==='s1'){x=a.s1[0];y=b.s1[0];} if(k==='fun'){x=a.fun?1:0;y=b.fun?1:0;} if(k==='map'){x=a.ibge?1:0;y=b.ibge?1:0;}
+  L.sort((a,b)=>{ let x=a[k],y=b[k]; if(k==='tier'){x=tierOrd[x];y=tierOrd[y];} if(k==='s1'){x=a.s1[0];y=b.s1[0];} if(k==='fun'){x=a.fun?1:0;y=b.fun?1:0;} if(k==='map'){x=a.loc?1:0;y=b.loc?1:0;}
     if(typeof x==='string'||typeof y==='string') return d*String(x||'').localeCompare(String(y||''),'pt'); return d*((x||0)-(y||0)) || b.max-a.max; });
   return L;
 }
@@ -384,7 +451,7 @@ function renderIspTable(){
   const L=ispFiltered(); const pages=Math.max(1,Math.ceil(L.length/PG)); ispPage=Math.min(ispPage,pages-1);
   const t=document.getElementById('tIsp');
   t.tHead.innerHTML='<tr>'+ISPCOLS.map(c=>`<th class="${c.n?'n':''}" data-k="${c.k}">${c.l}${ispSort.k===c.k?(ispSort.d>0?' ▲':' ▼'):''}</th>`).join('')+'</tr>';
-  t.tBodies[0].innerHTML=L.slice(ispPage*PG,(ispPage+1)*PG).map(s=>`<tr data-isp="${s.i}">${ISPCOLS.map(c=>`<td class="${c.n?'n':''}">${c.f(s)}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="11" class="empty">Nenhum ISP com esses filtros.</td></tr>';
+  t.tBodies[0].innerHTML=L.slice(ispPage*PG,(ispPage+1)*PG).map(s=>`<tr data-isp="${s.i}">${ISPCOLS.map(c=>`<td class="${c.n?'n':''}">${c.f(s)}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="12" class="empty">Nenhum ISP com esses filtros.</td></tr>';
   t.tHead.querySelectorAll('th').forEach(th=>th.onclick=()=>{const k=th.dataset.k; ispSort= ispSort.k===k?{k,d:-ispSort.d}:{k,d:(k==='max'||k==='tend'||k==='nBuy')?-1:1}; renderIspTable();});
   t.tBodies[0].querySelectorAll('tr[data-isp]').forEach(tr=>tr.onclick=()=>showIsp(ISPS[+tr.dataset.isp],'detail2'));
   t.tBodies[0].querySelectorAll('[data-send]').forEach(bt=>bt.onclick=e=>{e.stopPropagation(); sendIsps([ISPS[+bt.dataset.send]],'one');});
@@ -469,6 +536,7 @@ function matriz(list){
     assinantes_max:s.max, jan26:s.m[0],fev26:s.m[1],mar26:s.m[2],abr26:s.m[3],mai26:s.m[4], tendencia_mes:s.tend, flag_col_O:s.flag, acima_teto:s.capped?'sim':'nao', excluido:s.excl?'sim':'nao', n_compradores:s.nBuy };
     for(const b of BUY) if(b.on) o['comprador_'+b.name]= s.by[b.id]?BYLBL[s.by[b.id]]:'';
     o.no_funil = s.fun ? stageName(s.fun.stage_key) : '';
+    if(PREF){ o.clientes_anatel=s.presTot||''; o.cidades_com_clientes=s.npres||''; o.cidades_principais=s.pres?s.pres.slice(0,5).map(p=>{const x=MUN.get(p.id);return `${x.n}/${x.uf} (${p.n})`;}).join(', '):''; }
     Object.assign(o,{socio1_nome:s.s1[0],socio1_ddd:s.s1[1],socio1_cel:s.s1[2],socio1_email:s.s1[3],socio2_nome:s.s2[0],socio2_ddd:s.s2[1],socio2_cel:s.s2[2],socio2_email:s.s2[3],status:s.status,quem:s.quem});
     return o; });
 }
@@ -505,7 +573,7 @@ const API={
   resumo:()=>kpiResumo(),
   isp:(q)=>{ const s=findIsp(q); return s?matriz([s])[0]:null; },
   municipio:(ibge)=>munInfo(+ibge),
-  selecionarISP:(q)=>{ const s=findIsp(q); if(!s) return false; goTab('mapa'); showIsp(s,'detail'); if(s.ibge) zoomToMun(s.ibge); return true; },
+  selecionarISP:(q)=>{ const s=findIsp(q); if(!s) return false; goTab('mapa'); showIsp(s,'detail'); zoomToIsp(s); return true; },
   selecionarMunicipio:(ibge)=>{ ibge=+ibge; if(!MUN.has(ibge)) return false; goTab('mapa'); showMun(ibge); zoomToMun(ibge); return true; },
   excluirISP:(q,excluir=true)=>{ const s=findIsp(q); if(!s) return false; P.excl=P.excl.filter(x=>x!==s.key); if(excluir) P.excl.push(s.key); update(); return true; },
   adicionarComprador:(nome,linhas,vizinhos=true)=>{ const ids=[],nao=[]; for(const l of linhas){ const uf=(l.uf||'').toUpperCase(); const id= l.ibge? +l.ibge : NAMEKEY.get(uf+'|'+norm(l.municipio||'')); (id&&MUN.has(id))?ids.push(id):nao.push(l); }
@@ -529,12 +597,13 @@ function renderNotes(){
    <li><b>Nio</b>: compra nos municípios onde está (${DATA.nio.length} municípios).</li>
    <li><b>Zaaz/Sky</b>: compra nos municípios da rede (${DATA.zaaz.length}). <b>Fora deles, compra ISP com mais de ${fmt(P.skyMin)} assinantes</b> <span class="tbc">TBC</span>. Hoje a regra vale para o ISP no Brasil todo.</li>
    <li><b>Alares</b>: lista de ${Object.keys(DATA.alares).length} municípios com assinantes (fonte Anatel, enviada pelo Gaunzer). Vários municípios têm só 1 a 5 assinantes, por isso existe o corte de presença, hoje em ${fmt(P.alaresMin)} e ajustável no painel. A Alares informa que <b>municípios que fazem divisa com a sua cobertura são targets</b>.</li>
+   ${PREF?`<li><b>Presença do ISP (Anatel ${esc(PREF_LBL)})</b>: além da sede, contam as cidades onde o ISP tem pelo menos ${fmt(P.presMin)} clientes de banda larga fixa (base de acessos por CNPJ e município). Se uma dessas cidades está na área de um comprador, o ISP passa a ter esse comprador ("tem clientes na área"); se é vizinha, "tem clientes em vizinho". ISPs sem CNPJ ou sem acessos na Anatel continuam só pela sede. Desligue no painel para voltar à regra só da sede.</li>`:''}
    <li><b>Vizinhos</b>: para cada comprador, o mapa soma à área dele os municípios que fazem divisa com ela, usando a base de divisas. Dá para ligar e desligar por comprador.</li>
    <li><b>Outros players menores</b>: podem comprar, mas a lista ainda não foi recebida. Dá para colar a lista no painel esquerdo.</li>
    <li><b>Excluídos</b>: os próprios compradores presentes na base saem da lista: ${(DATA.excl_padrao||[]).map(i=>esc(ISPS[i].nome)+(ISPS[i].cnpj?' (CNPJ '+ISPS[i].cnpj+')':'')).join(', ')}. A lista fica em scripts/config.json. A Nio não aparece com esse nome na base. Qualquer ISP pode ser excluído ou reincluído no painel de detalhe dele.</li>
    <li><b>Tiers</b>: Tier 1 vai de ${fmt(P.t1)} assinantes para cima e Tier 2 de ${fmt(P.t2)} a ${fmt(P.t1-1)}. O Tier 3 reúne quem tem comprador e está abaixo do Tier 2. ISPs acima de ${fmt(P.cap)} assinantes são ignorados (operadoras e consolidadores). Todos os cortes são parâmetros.</li>
   </ul>
-  <div class="warn"><b>Limitação importante:</b> a base Anatel enviada traz <b>um município por ISP, o da sede</b>, e não a presença do ISP em cada município. O cruzamento é feito pela <b>sede</b>, então um ISP sediado fora da área mas com clientes dentro dela não aparece como alvo geográfico. Além disso, <b>${fmt(noSede.length)} dos ${fmt(ISPS.length)} ISPs não têm município sede</b> na base. Esses ISPs entram na matriz e no filtro "Sem município sede", mas só ganham comprador pela regra da Sky (≥ ${fmt(P.skyMin)}). Com a base Anatel de acessos por município e prestadora, o cruzamento passaria a ser por presença real.</div>
+  ${PREF?`<div class="warn"><b>Presença:</b> a base de acessos da Anatel (${esc(PREF_LBL)}) cobre ${fmt(PREF.isps)} ISPs do mapa pelo CNPJ. A coluna "Assinantes" e os Tiers continuam usando o máximo jan–mai/2026 da planilha original; a presença só define em quais cidades o ISP atua.</div>`:`<div class="warn"><b>Limitação importante:</b> a base Anatel enviada traz <b>um município por ISP, o da sede</b>, e não a presença do ISP em cada município. O cruzamento é feito pela <b>sede</b>, então um ISP sediado fora da área mas com clientes dentro dela não aparece como alvo geográfico. Além disso, <b>${fmt(noSede.length)} dos ${fmt(ISPS.length)} ISPs não têm município sede</b> na base. Esses ISPs entram na matriz e no filtro "Sem município sede", mas só ganham comprador pela regra da Sky (≥ ${fmt(P.skyMin)}). Com a base Anatel de acessos por município e prestadora, o cruzamento passaria a ser por presença real.</div>`}
   <h2>Fontes</h2>
   <table><thead><tr><th>Arquivo</th><th>Conteúdo</th><th class="n">Registros</th></tr></thead><tbody>
    <tr><td>nio.xlsx</td><td>Municípios onde a Nio está e compra</td><td class="n">${DATA.nio.length}</td></tr>

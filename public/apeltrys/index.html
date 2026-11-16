@@ -41,6 +41,13 @@
     <div class="row"><button class="btn" id="cbAdd">Adicionar comprador</button><span class="mini muted" id="cbMsg"></span></div>
   </div>
 
+  <div id="presBox">
+  <h3>Presença do ISP (Anatel)</h3>
+  <label class="chk"><input type="checkbox" id="presOn"> Contar as cidades onde o ISP tem clientes, além da sede</label>
+  <div class="row"><label>Mínimo de clientes na cidade</label><input type="number" id="presMin" step="10" min="1"></div>
+  <div class="mini muted" id="presInfo"></div>
+  </div>
+
   <h3>Corte de Tiers (assinantes do ISP)</h3>
   <div class="row"><label>Tier 1 a partir de</label><input type="number" id="t1" step="500" min="0"></div>
   <div class="row"><label>Tier 2 a partir de</label><input type="number" id="t2" step="500" min="0"></div>

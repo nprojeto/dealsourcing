@@ -162,3 +162,11 @@ body.no-detail #detail,body.no-detail #detail2{display:none}
 .nomap{display:flex;align-items:center;gap:6px;margin:4px 0 8px;padding:7px 10px;border-radius:8px;background:#f3f4f6;color:#6b7280;font-size:12px}
 .pinbtn{display:inline-grid;place-items:center;width:28px;height:28px;padding:0;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--accent);cursor:pointer}
 .pinbtn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* Presença (Anatel) */
+.badge.b-P{}
+.pres .ptab{width:100%;font-size:12px;border-collapse:collapse}
+.pres .ptab th{font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);text-align:left;padding:2px 4px;border-bottom:1px solid var(--line)}
+.pres .ptab th.n,.pres .ptab td.n{text-align:right}
+.pres .ptab td{padding:3px 4px;border-bottom:1px solid #eef1f6}
+.pres .up{color:#2b8a3e}.pres .down{color:#c92a2a}
+#presBox input[type=number]:disabled{opacity:.5}
