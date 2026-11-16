@@ -59,6 +59,7 @@ const save=()=>{ clearTimeout(saveT); const el=document.getElementById('saveMsg'
   saveT=setTimeout(()=>toParent('amap:params',JSON.parse(JSON.stringify(P))),700); };
 let EXSET=new Set();
 const ELIG=['T1','T2','T3'];
+const PIN='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>';
 const stageName=k=>FUNNEL_STAGES.get(k)||k;
 
 function buyersDef(){
@@ -217,9 +218,10 @@ function draw(){
   if(selMun!=null){ const i=munFeat.findIndex(f=>+f.properties.i===selMun); if(i>=0){ctx.strokeStyle='#111';ctx.lineWidth=2/T.k;ctx.stroke(paths[i]);}}
   // dots
   dotList=[];
-  if(document.getElementById('showDots').checked){
+  const showD=document.getElementById('showDots').checked;
+  if(showD || (selIsp && selIsp.ibge)){
     const w=document.getElementById('dotsWhich').value;
-    const L=ISPS.filter(s=>s.ibge && passGlobal(s) && (w==='EVERY'||(w==='ALL'&&s.tier!=='T0')||(w==='T12'&&(s.tier==='T1'||s.tier==='T2'))||(w==='T1'&&s.tier==='T1'))).sort((a,b)=>b.max-a.max);
+    const L=ISPS.filter(s=>s.ibge && (s===selIsp || (showD && passGlobal(s) && (w==='EVERY'||(w==='ALL'&&s.tier!=='T0')||(w==='T12'&&(s.tier==='T1'||s.tier==='T2'))||(w==='T1'&&s.tier==='T1'))))).sort((a,b)=>b.max-a.max);
     const off=new Map();
     for(const s of L){ const m=MUN.get(s.ibge); if(!m||!m.c) continue; const p=proj(m.c);
       const k=off.get(s.ibge)||0; off.set(s.ibge,k+1);
@@ -230,6 +232,7 @@ function draw(){
       ctx.beginPath(); ctx.arc(x,y,r,0,7);
       ctx.fillStyle= s.tier==='T1'?'rgba(43,138,62,.85)': s.tier==='T2'?'rgba(232,162,0,.85)': s.tier==='T3'?'rgba(134,142,150,.75)':'rgba(73,80,87,.35)';
       ctx.fill(); ctx.lineWidth=(s===selIsp?2.2:.7)/T.k; ctx.strokeStyle=s===selIsp?'#000':'#fff'; ctx.stroke();
+      if(s===selIsp){ ctx.beginPath(); ctx.arc(x,y,r+9/T.k,0,7); ctx.lineWidth=3/T.k; ctx.strokeStyle='rgba(214,51,108,.95)'; ctx.stroke(); }
       dotList.push({s,x,y,r});
     }
   }
@@ -311,6 +314,7 @@ function bindDetail(d,target){
   d.querySelectorAll('[data-isp]').forEach(tr=>tr.onclick=()=>showIsp(ISPS[+tr.dataset.isp],target));
   d.querySelectorAll('[data-excl]').forEach(bt=>bt.onclick=()=>{const s=ISPS[+bt.dataset.excl]; P.excl=P.excl.includes(s.key)?P.excl.filter(x=>x!==s.key):[...P.excl,s.key]; update(); showIsp(s,target);});
   d.querySelectorAll('[data-send]').forEach(bt=>bt.onclick=()=>sendIsps([ISPS[+bt.dataset.send]],'one'));
+  d.querySelectorAll('[data-goto]').forEach(bt=>bt.onclick=()=>goToIspMap(ISPS[+bt.dataset.goto]));
   d.querySelectorAll('[data-open]').forEach(bt=>bt.onclick=()=>toParent('amap:open',{opportunity_id:bt.dataset.open}));
   d.querySelectorAll('[data-mun]').forEach(a=>a.onclick=e=>{e.preventDefault(); const id=+a.dataset.mun; goTab('mapa'); showMun(id); zoomToMun(id);});
 }
@@ -318,10 +322,14 @@ function spark(m){ const w=300,h=50,mx=Math.max(...m),mn=Math.min(...m); const s
   return `<svg class="spark" width="${w}" height="${h+14}"><polyline fill="none" stroke="#0f2b5b" stroke-width="2" points="${m.map((v,i)=>sc(i)+','+sy(v)).join(' ')}"/>${m.map((v,i)=>`<circle cx="${sc(i)}" cy="${sy(v)}" r="3" fill="#0f2b5b"><title>${MONTHS[i]}: ${fmt(v)}</title></circle><text x="${sc(i)}" y="${h+12}" font-size="10" text-anchor="middle" fill="#6b7280">${MONTHS[i]}</text>`).join('')}</svg>`; }
 function socio(s,lbl){ if(!s||!s[0]) return ''; const tel=[s[1],s[2]].filter(Boolean).join(' ');
   return `<div class="kv" style="margin-bottom:6px"><div>${lbl}</div><div><b>${esc(s[0])}</b></div>${tel?`<div>Celular</div><div>(${esc(s[1])}) ${esc(s[2])}</div>`:''}${s[3]?`<div>E-mail</div><div><a href="mailto:${esc(s[3].toLowerCase())}">${esc(s[3].toLowerCase())}</a></div>`:''}</div>`; }
+/** Leva para a aba Mapa, com zoom na cidade sede e o ISP destacado. */
+function goToIspMap(s){ goTab('mapa'); showIsp(s,'detail'); requestAnimationFrame(()=>{ zoomToMun(s.ibge); draw(); }); }
 function showIsp(s,target){
   selIsp=s; if(s.ibge) selMun=s.ibge; showDetailPanel(); if(target==='detail') draw();
   const m=s.ibge?MUN.get(s.ibge):null;
   let h=`<h2>${esc(s.nome)}</h2><div class="muted">${esc(s.rs||'')}</div><div style="margin:6px 0">${tierHtml(s)} ${buyerBadges(s.by)}</div>`;
+  h+= m ? `<button class="btn gomap" data-goto="${s.i}">${PIN} ${target==='detail'?'Centralizar no mapa':'Ver no mapa'} <span>${esc(m.n)} – ${m.uf}</span></button>`
+        : `<div class="nomap">${PIN} Sem cidade sede na base: não aparece no mapa.</div>`;
   h+=`<div class="sec"><div class="kv">
     <div>CNPJ</div><div>${esc(s.cnpj)||'–'}</div>
     <div>Sede</div><div>${m?`<a href="#" data-mun="${m.id}">${esc(m.n)} – ${m.uf}</a>`:(s.cid?esc(s.cid+' – '+s.uf):'<span class="muted">sem município sede na base</span>')}</div>
@@ -344,6 +352,7 @@ function showIsp(s,target){
 
 // ---------- ISP table ----------
 const ISPCOLS=[
+  {k:'map',l:'Mapa',f:s=>s.ibge?`<button class="pinbtn" data-goto="${s.i}" title="Ver no mapa">${PIN}</button>`:'<span class="muted" title="Sem cidade sede na base">–</span>'},
   {k:'nome',l:'ISP',f:s=>`<b>${esc(s.nome)}</b><div class="mini muted">${esc(s.rs)}${s.cnpj?' · '+esc(s.cnpj):''}</div>`},
   {k:'uf',l:'UF',f:s=>esc(s.uf)},
   {k:'cid',l:'Sede',f:s=>s.ibge?esc(MUN.get(s.ibge).n):'<span class="muted">–</span>'},
@@ -367,7 +376,7 @@ function ispFiltered(){
     && (!ff || (ff==='in'?!!s.fun:!s.fun))
     && (!q || norm([s.nome,s.rs,s.cnpj,s.cid,s.uf,s.s1[0],s.s2[0]].join(' ')).includes(q)));
   const k=ispSort.k,d=ispSort.d;
-  L.sort((a,b)=>{ let x=a[k],y=b[k]; if(k==='tier'){x=tierOrd[x];y=tierOrd[y];} if(k==='s1'){x=a.s1[0];y=b.s1[0];} if(k==='fun'){x=a.fun?1:0;y=b.fun?1:0;}
+  L.sort((a,b)=>{ let x=a[k],y=b[k]; if(k==='tier'){x=tierOrd[x];y=tierOrd[y];} if(k==='s1'){x=a.s1[0];y=b.s1[0];} if(k==='fun'){x=a.fun?1:0;y=b.fun?1:0;} if(k==='map'){x=a.ibge?1:0;y=b.ibge?1:0;}
     if(typeof x==='string'||typeof y==='string') return d*String(x||'').localeCompare(String(y||''),'pt'); return d*((x||0)-(y||0)) || b.max-a.max; });
   return L;
 }
@@ -375,10 +384,11 @@ function renderIspTable(){
   const L=ispFiltered(); const pages=Math.max(1,Math.ceil(L.length/PG)); ispPage=Math.min(ispPage,pages-1);
   const t=document.getElementById('tIsp');
   t.tHead.innerHTML='<tr>'+ISPCOLS.map(c=>`<th class="${c.n?'n':''}" data-k="${c.k}">${c.l}${ispSort.k===c.k?(ispSort.d>0?' ▲':' ▼'):''}</th>`).join('')+'</tr>';
-  t.tBodies[0].innerHTML=L.slice(ispPage*PG,(ispPage+1)*PG).map(s=>`<tr data-isp="${s.i}">${ISPCOLS.map(c=>`<td class="${c.n?'n':''}">${c.f(s)}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="10" class="empty">Nenhum ISP com esses filtros.</td></tr>';
+  t.tBodies[0].innerHTML=L.slice(ispPage*PG,(ispPage+1)*PG).map(s=>`<tr data-isp="${s.i}">${ISPCOLS.map(c=>`<td class="${c.n?'n':''}">${c.f(s)}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="11" class="empty">Nenhum ISP com esses filtros.</td></tr>';
   t.tHead.querySelectorAll('th').forEach(th=>th.onclick=()=>{const k=th.dataset.k; ispSort= ispSort.k===k?{k,d:-ispSort.d}:{k,d:(k==='max'||k==='tend'||k==='nBuy')?-1:1}; renderIspTable();});
   t.tBodies[0].querySelectorAll('tr[data-isp]').forEach(tr=>tr.onclick=()=>showIsp(ISPS[+tr.dataset.isp],'detail2'));
   t.tBodies[0].querySelectorAll('[data-send]').forEach(bt=>bt.onclick=e=>{e.stopPropagation(); sendIsps([ISPS[+bt.dataset.send]],'one');});
+  t.tBodies[0].querySelectorAll('[data-goto]').forEach(bt=>bt.onclick=e=>{e.stopPropagation(); goToIspMap(ISPS[+bt.dataset.goto]);});
   const elig=L.filter(s=>!s.fun && ELIG.includes(s.tier)); const sb=document.getElementById('sendBulk');
   sb.disabled=!elig.length; sb.textContent=elig.length?`Enviar ${fmt(elig.length)} ao funil`:'Nada a enviar';
   sb.title='Envia os ISPs filtrados (Tier 1, 2 e 3) que ainda não estão no funil';
