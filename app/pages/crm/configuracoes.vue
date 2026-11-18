@@ -12,6 +12,7 @@ const route = useRoute()
 const tab = ref<'params' | 'legal' | 'funil'>(route.query.aba === 'funil' ? 'funil' : 'params')
 
 const CATEGORY_LABEL: Record<string, { t: string; d: string }> = {
+  tutoriais: { t: 'Vídeos tutoriais', d: 'Botão "Como funciona" no topo de cada página, com um vídeo curto explicando o módulo.' },
   limites: { t: 'Limite de simulações', d: 'Quantas simulações cada provedor (login) e cada domínio de e-mail podem fazer por mês. Em e-mails gratuitos, o limite do grupo é contado por CNPJ. Zera no dia 1º.' },
   simulador: { t: 'Simulador — o que o provedor vê', d: 'Controla se o proprietário do ISP enxerga a faixa de valor das próprias simulações.' },
   reunioes: { t: 'Reuniões', d: 'Lembretes, duração padrão e convites por e-mail aos provedores.' },

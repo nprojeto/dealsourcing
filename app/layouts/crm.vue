@@ -71,6 +71,7 @@ const title = computed(() => visible.value.flatMap((g) => g.items).find((i) => i
         <button class="icon-btn burger" aria-label="Abrir menu" @click="open = true"><AppIcon name="menu" /></button>
         <div class="crumb"><span class="crumb-app">DealSourcing</span><AppIcon name="chevron-right" :size="14" />{{ title }}</div>
         <div class="row" style="margin-left:auto">
+          <TutorialButton />
           <NotificationBell />
         </div>
       </header>
