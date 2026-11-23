@@ -49,6 +49,7 @@ const ISP_BY_MUN = new Map();
 for (const s of ISPS) if (s.ibge){ if(!ISP_BY_MUN.has(s.ibge)) ISP_BY_MUN.set(s.ibge,[]); ISP_BY_MUN.get(s.ibge).push(s); }
 // presença por município (Anatel, acessos de banda larga fixa por CNPJ): [{id, n, a}] com n = mês de referência, a = 12 meses antes
 const PRES = DATA.pres||{}, PREF = DATA.pres_ref||null, DENS = DATA.dens||{};
+const XTEL = DATA.xtel||{};   // telefones extras (planilha consolidada): [telefone, tipo, whatsapp 0/1, nome na planilha]
 const PRES_BY_MUN = new Map();
 for (const s of ISPS){
   const f = PRES[String(s.cnpj||'').replace(/\D/g,'')]; s.pres=null; s.presTot=0; s.npres=0;
@@ -56,6 +57,7 @@ for (const s of ISPS){
     if (L.length){ s.pres=L; s.presTot=L.reduce((x,p)=>x+p.n,0); s.npres=L.length;
       for (const p of L){ if(!PRES_BY_MUN.has(p.id)) PRES_BY_MUN.set(p.id,[]); PRES_BY_MUN.get(p.id).push([s,p.n]); } } }
   // onde o ponto do ISP aparece: sede; sem sede, a cidade com mais clientes
+  s.xtel = XTEL[s.key]||[];
   s.loc = s.ibge || (s.pres && (s.pres.find(p=>MUN.get(p.id)?.c)||{}).id) || null;
 }
 const ymLabel = ym => { if(!ym) return ''; const [y,m]=ym.split('-'); return ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][+m-1]+'/'+y; };
@@ -411,7 +413,8 @@ function showIsp(s,target){
     : s.excl ? '<div class="muted">Excluído da análise: reinclua para enviar.</div>'
     : `<div class="mini muted" style="margin-bottom:6px">Entra na etapa 1 (ISP identificado), na fila, sem responsável.</div><button class="btn" data-send="${s.i}">Enviar para o funil</button>`}</div>`;
   h+=`<div class="sec"><button class="btn ghost" data-excl="${s.i}">${s.excl?'Reincluir na análise':'Excluir da análise (comprador/não é alvo)'}</button></div>`;
-  h+=`<div class="sec"><h4>Contatos</h4>${socio(s.s1,'Sócio 1')}${socio(s.s2,'Sócio 2')||''}${!s.s1[0]&&!s.s2[0]?'<div class="muted">Sem contatos na base.</div>':''}</div>`;
+  const xt=s.xtel.map(e=>`<div class="kv xtel"><div>${e[2]?'WhatsApp':esc(e[1])}</div><div><a href="tel:${esc(String(e[0]).replace(/\D/g,''))}">${esc(e[0])}</a>${e[3]&&keyNorm(e[3])!==keyNorm(s.nome)?` <span class="mini muted">· ${esc(e[3])}</span>`:''}</div></div>`).join('');
+  h+=`<div class="sec"><h4>Contatos</h4>${socio(s.s1,'Sócio 1')}${socio(s.s2,'Sócio 2')||''}${xt?`<div class="mini muted" style="margin:6px 0 2px">Telefones da empresa (planilha consolidada)</div>${xt}`:''}${!s.s1[0]&&!s.s2[0]&&!xt?'<div class="muted">Sem contatos na base.</div>':''}</div>`;
   const d=document.getElementById(target); d.innerHTML=h; bindDetail(d,target);
   emit('apeltrys:isp',matriz([s])[0]);
 }
@@ -441,7 +444,7 @@ function ispFiltered(){
     && (!fb || s.by[fb])
     && (!fs || (fs==='1'?!!s.ibge:!s.ibge))
     && (!ff || (ff==='in'?!!s.fun:!s.fun))
-    && (!q || norm([s.nome,s.rs,s.cnpj,s.cid,s.uf,s.s1[0],s.s2[0]].join(' ')).includes(q)));
+    && (!q || norm([s.nome,s.rs,s.cnpj,s.cid,s.uf,s.s1[0],s.s2[0],...s.xtel.map(e=>e[0])].join(' ')).includes(q)));
   const k=ispSort.k,d=ispSort.d;
   L.sort((a,b)=>{ let x=a[k],y=b[k]; if(k==='tier'){x=tierOrd[x];y=tierOrd[y];} if(k==='s1'){x=a.s1[0];y=b.s1[0];} if(k==='fun'){x=a.fun?1:0;y=b.fun?1:0;} if(k==='map'){x=a.loc?1:0;y=b.loc?1:0;}
     if(typeof x==='string'||typeof y==='string') return d*String(x||'').localeCompare(String(y||''),'pt'); return d*((x||0)-(y||0)) || b.max-a.max; });
@@ -537,7 +540,7 @@ function matriz(list){
     for(const b of BUY) if(b.on) o['comprador_'+b.name]= s.by[b.id]?BYLBL[s.by[b.id]]:'';
     o.no_funil = s.fun ? stageName(s.fun.stage_key) : '';
     if(PREF){ o.clientes_anatel=s.presTot||''; o.cidades_com_clientes=s.npres||''; o.cidades_principais=s.pres?s.pres.slice(0,5).map(p=>{const x=MUN.get(p.id);return `${x.n}/${x.uf} (${p.n})`;}).join(', '):''; }
-    Object.assign(o,{socio1_nome:s.s1[0],socio1_ddd:s.s1[1],socio1_cel:s.s1[2],socio1_email:s.s1[3],socio2_nome:s.s2[0],socio2_ddd:s.s2[1],socio2_cel:s.s2[2],socio2_email:s.s2[3],status:s.status,quem:s.quem});
+    Object.assign(o,{socio1_nome:s.s1[0],socio1_ddd:s.s1[1],socio1_cel:s.s1[2],socio1_email:s.s1[3],socio2_nome:s.s2[0],socio2_ddd:s.s2[1],socio2_cel:s.s2[2],socio2_email:s.s2[3],telefones_extras:s.xtel.map(e=>e[0]+(e[2]?' (WhatsApp)':'')).join(', '),status:s.status,quem:s.quem});
     return o; });
 }
 function toCsv(rows){ if(!rows.length) return ''; const h=Object.keys(rows[0]); return '﻿'+h.join(';')+'\n'+rows.map(r=>h.map(k=>csvCell(r[k])).join(';')).join('\n'); }
