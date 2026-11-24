@@ -77,16 +77,27 @@ watch(() => rf.data.percent_mode, (v) => { if (v === 'scorecard') { rf.data.bene
 
 // ----- faixas da avaliação do indicador -----
 const bands = ref<ScoreBand[]>([])
-const bf = reactive({ open: false, busy: false, error: '', rows: [] as { max_points: number | string; percent: number | string; label: string; description: string }[] })
-async function loadBands() { try { bands.value = (await api.get<{ bands: ScoreBand[] }>('/admin/scorecard-bands')).bands } catch { bands.value = [] } }
-function editBands() {
-  bf.error = ''; bf.rows = bands.value.map((b) => ({ max_points: Number(b.max_points), percent: Number(b.percent), label: b.label, description: b.description ?? '' })); bf.open = true
+interface FeeAdj { id?: string; max_fee: number; points: number; label: string; description: string | null }
+const feeAdj = ref<FeeAdj[]>([])
+const bf = reactive({ open: false, busy: false, error: '', rows: [] as { max_points: number | string; percent: number | string; label: string; description: string }[],
+  fees: [] as { max_fee: number | string; points: number | string; label: string; description: string }[] })
+async function loadBands() {
+  try { const r = await api.get<{ bands: ScoreBand[]; fee_adjustments: FeeAdj[] }>('/admin/scorecard-bands'); bands.value = r.bands; feeAdj.value = r.fee_adjustments ?? [] }
+  catch { bands.value = []; feeAdj.value = [] }
 }
+function editBands() {
+  bf.error = ''; bf.rows = bands.value.map((b) => ({ max_points: Number(b.max_points), percent: Number(b.percent), label: b.label, description: b.description ?? '' }))
+  bf.fees = feeAdj.value.map((f) => ({ max_fee: Number(f.max_fee), points: Number(f.points), label: f.label, description: f.description ?? '' })); bf.open = true
+}
+const fmtFee = (n: number) => `${Number(n).toLocaleString('pt-BR', { maximumFractionDigits: 3 })}%`
+const feeRange = (f: FeeAdj, i: number) => i === 0 ? `até ${fmtFee(f.max_fee)}` : Number(f.max_fee) >= 100 ? `acima de ${fmtFee(feeAdj.value[i - 1].max_fee)}` : `acima de ${fmtFee(feeAdj.value[i - 1].max_fee)} até ${fmtFee(f.max_fee)}`
+const fmtSigned = (n: number) => `${Number(n) > 0 ? '+' : ''}${Number(n).toLocaleString('pt-BR')} pts`
 async function saveBands() {
   bf.busy = true; bf.error = ''
   try {
-    const r = await api.put<{ bands: ScoreBand[] }>('/admin/scorecard-bands', { bands: bf.rows.map((x) => ({ ...x, max_points: Number(x.max_points), percent: Number(x.percent) })) })
-    bands.value = r.bands; bf.open = false; toast.success('Faixas atualizadas. Valem para as próximas comissões.')
+    const r = await api.put<{ bands: ScoreBand[] }>('/admin/scorecard-bands', { bands: bf.rows.map((x) => ({ ...x, max_points: Number(x.max_points), percent: Number(x.percent) })),
+      fee_adjustments: bf.fees.map((x) => ({ ...x, max_fee: Number(String(x.max_fee).replace(',', '.')), points: Number(x.points) })) })
+    bands.value = r.bands; feeAdj.value = (r as unknown as { fee_adjustments: FeeAdj[] }).fee_adjustments ?? feeAdj.value; bf.open = false; toast.success('Faixas atualizadas. Valem para as próximas comissões.')
   } catch (e) { bf.error = errorMessage(e) } finally { bf.busy = false }
 }
 const bandRange = (b: ScoreBand, i: number) => i === 0 ? `0 a ${fmtPts(b.max_points)}` : `acima de ${fmtPts(b.min_points)} até ${fmtPts(b.max_points)}`
@@ -285,7 +296,8 @@ function card(status: string) { tab.value = 'comissoes'; f.status = f.status ===
       <section v-if="bands.length" class="card bands">
         <div class="row between">
           <div><h3 style="margin:0">Faixas da avaliação do indicador</h3>
-            <p class="small muted" style="margin:.2rem 0 0">Parceiro externo: a soma dos pontos (0 a 100) nos 6 critérios da avaliação define o percentual. Só admin e gestão veem.</p></div>
+            <p class="small muted" style="margin:.2rem 0 0">Parceiro externo: a soma dos pontos nos 6 critérios (0 a 100), mais o ajuste pela taxa do mandato, define o percentual. O parceiro vê esta regra (sem negócios nem valores) na página de treinamento do portal.</p></div>
+          <NuxtLink to="/portal/regras-comissao" class="btn btn-outline btn-sm"><AppIcon name="eye" :size="16" /> Ver como o parceiro vê</NuxtLink>
           <button v-if="canManage" class="btn btn-outline btn-sm" @click="editBands"><AppIcon name="edit" :size="16" /> Editar faixas</button>
         </div>
         <div class="table-wrap" style="margin-top:.8rem">
@@ -293,17 +305,36 @@ function card(status: string) { tab.value = 'comissoes'; f.status = f.status ===
             <tbody><tr v-for="(b, i) in bands" :key="b.id ?? i"><td class="nowrap">{{ bandRange(b, i) }}</td><td class="t-strong">{{ b.label }}</td>
               <td class="r t-strong">{{ Number(b.percent).toLocaleString('pt-BR') }}%</td><td class="small muted">{{ b.description }}</td></tr></tbody></table>
         </div>
+        <template v-if="feeAdj.length">
+          <h4 style="margin:1.1rem 0 .2rem">Fator de ajuste: taxa fechada com o provedor</h4>
+          <p class="small muted" style="margin:0">Registrada na assinatura do contrato de mandato. Soma ou tira pontos da nota das 6 etapas (a nota final não fica abaixo de zero).</p>
+          <div class="table-wrap" style="margin-top:.6rem">
+            <table class="table"><thead><tr><th>Taxa</th><th>Classificação</th><th class="r">Pontos</th><th>Efeito</th></tr></thead>
+              <tbody><tr v-for="(f, i) in feeAdj" :key="f.id ?? i"><td class="nowrap">{{ feeRange(f, i) }}</td><td class="t-strong">{{ f.label }}</td>
+                <td class="r t-strong" :style="{ color: Number(f.points) > 0 ? '#1e6b33' : Number(f.points) < 0 ? '#a61b1b' : '' }">{{ Number(f.points) === 0 ? '0 (neutro)' : fmtSigned(f.points) }}</td><td class="small muted">{{ f.description }}</td></tr></tbody></table>
+          </div>
+        </template>
       </section>
       <AppModal :open="bf.open" title="Faixas da avaliação do indicador" :width="760" @close="bf.open = false">
-        <p class="small muted" style="margin-top:0">Cada faixa vai do limite da anterior até o limite informado. A última termina em 100.</p>
+        <p class="small muted" style="margin-top:0">Cada faixa vai do limite da anterior até o limite informado. A última deve ir pelo menos até 100 (com bônus da taxa, até 125).</p>
         <div v-for="(x, i) in bf.rows" :key="i" class="band-row">
-          <label class="field"><span class="small">Até (pontos)</span><input v-model="x.max_points" class="input" type="number" min="1" max="100" step="0.5"></label>
+          <label class="field"><span class="small">Até (pontos)</span><input v-model="x.max_points" class="input" type="number" min="1" max="200" step="0.5"></label>
           <label class="field"><span class="small">Comissão (%)</span><input v-model="x.percent" class="input" type="number" min="0.01" max="100" step="0.05"></label>
           <label class="field"><span class="small">Nome da faixa</span><input v-model="x.label" class="input"></label>
           <button class="icon-btn" :disabled="bf.rows.length <= 1" aria-label="Remover faixa" @click="bf.rows.splice(i, 1)"><AppIcon name="x" :size="16" /></button>
           <label class="field full"><input v-model="x.description" class="input" placeholder="Quando se aplica (opcional)"></label>
         </div>
-        <button class="btn btn-ghost btn-sm" @click="bf.rows.push({ max_points: 100, percent: '', label: '', description: '' })"><AppIcon name="plus" :size="16" /> Adicionar faixa</button>
+        <button class="btn btn-ghost btn-sm" @click="bf.rows.push({ max_points: 125, percent: '', label: '', description: '' })"><AppIcon name="plus" :size="16" /> Adicionar faixa</button>
+        <h4 style="margin:1.2rem 0 .2rem">Fator de ajuste pela taxa do mandato</h4>
+        <p class="small muted" style="margin-top:0">Cada linha vale para taxas acima do limite da anterior até o limite informado. A última termina em 100%.</p>
+        <div v-for="(x, i) in bf.fees" :key="'f' + i" class="band-row">
+          <label class="field"><span class="small">Taxa até (%)</span><input v-model="x.max_fee" class="input" type="number" min="0.01" max="100" step="0.01"></label>
+          <label class="field"><span class="small">Pontos (+/−)</span><input v-model="x.points" class="input" type="number" min="-100" max="100" step="0.5"></label>
+          <label class="field"><span class="small">Classificação</span><input v-model="x.label" class="input"></label>
+          <button class="icon-btn" :disabled="bf.fees.length <= 1" aria-label="Remover linha" @click="bf.fees.splice(i, 1)"><AppIcon name="x" :size="16" /></button>
+          <label class="field full"><input v-model="x.description" class="input" placeholder="Efeito prático (opcional)"></label>
+        </div>
+        <button class="btn btn-ghost btn-sm" @click="bf.fees.push({ max_fee: 100, points: 0, label: '', description: '' })"><AppIcon name="plus" :size="16" /> Adicionar linha</button>
         <p v-if="bf.error" class="error">{{ bf.error }}</p>
         <template #footer>
           <button class="btn btn-ghost" :disabled="bf.busy" @click="bf.open = false">Cancelar</button>

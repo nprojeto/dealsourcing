@@ -24,6 +24,11 @@ function closeC() { openId.value = null; router.replace({ query: {} }) }
       <div><div class="eyebrow">Portal do parceiro</div><h1>Comissões</h1>
         <p>As comissões aparecem aqui quando são liberadas, no fim da negociação de um provedor indicado por você, e passam por aprovação antes do pagamento.</p></div>
     </div>
+    <NuxtLink to="/portal/regras-comissao" class="card learn">
+      <span class="l-ico"><AppIcon name="info" :size="22" /></span>
+      <span class="grow"><strong>Como funciona a sua comissão</strong><small>Veja os critérios, as faixas de percentual e simule a sua pontuação.</small></span>
+      <AppIcon name="arrow-right" :size="18" />
+    </NuxtLink>
     <div v-if="loading" class="empty"><span class="spinner" /></div>
     <template v-else-if="summary">
       <div class="kpis">
@@ -55,6 +60,11 @@ function closeC() { openId.value = null; router.replace({ query: {} }) }
 </template>
 
 <style scoped>
+.learn { display: flex; align-items: center; gap: .9rem; padding: .9rem 1.1rem; margin-bottom: 1.25rem; border-left: 4px solid var(--blue); color: inherit; text-decoration: none; }
+.learn:hover { border-color: var(--blue); text-decoration: none; }
+.learn strong { display: block; color: var(--navy); }
+.learn small { color: var(--muted); }
+.l-ico { flex: none; width: 42px; height: 42px; border-radius: 12px; background: var(--blue-100); color: var(--blue); display: grid; place-items: center; }
 .kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
 .kpi.info::before { background: var(--blue); }
 .kpi-value.sm { font-size: 1.4rem; }

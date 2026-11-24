@@ -5,11 +5,12 @@ interface OppCommission { id: string; status: string; amount: number | null; pai
 interface Activity { id: string; kind: string; outcome: string | null; event: string | null; description: string | null; occurred_at: string; user: { full_name: string } | null; data: Record<string, unknown> }
 interface Attachment { id: string; file_name: string; mime_type: string; size_bytes: number; created_at: string; uploaded_by: string; uploader: { full_name: string } | null }
 interface Sim { id: string; created_at: string; status: string; client_base: number; cities: string[]; arpu: number; poles_valid_pct: number; employment_type: string; clt_pct?: number | null; regularized: string; technicians_count: number; employees_count: number; formalized_at: string | null; result: SimResult | null; version: { version: number } | null }
+interface Mandate { stage_key: string | null; stage_name: string | null; stage_position: number | null; fee_pct: number | null; fee_at: string | null; fee_by: string | null; can_set: boolean; can_change: boolean }
 interface Detail {
   opportunity: OppItem; isp: Record<string, unknown> & { owner?: { full_name: string; email: string; phone: string | null } | null } | null
   simulations: Sim[]; formalizations: { id: string; simulation_id: string; formalized_at: string }[]
   activities: Activity[]; attachments: Attachment[]; contact_stats: { total: number; unanswered: number }
-  can_edit: boolean; can_assign: boolean; commissions: OppCommission[]; scorecard?: import('./ScorecardPanel.vue').Scorecard | null
+  can_edit: boolean; can_assign: boolean; commissions: OppCommission[]; mandate?: Mandate | null; scorecard?: import('./ScorecardPanel.vue').Scorecard | null
 }
 
 const props = defineProps<{ id: string | null; stages: Stage[]; assignees: Assignee[] }>()
@@ -44,6 +45,24 @@ async function load(keepTab = false) {
 }
 watch(() => props.id, (v) => { if (v) { d.value = null; load() } }, { immediate: true })
 async function refresh() { await load(true); emit('changed') }
+
+// ----- taxa do mandato -----
+const feeIn = ref('')
+const feeEdit = ref(false)
+const mandateDue = computed(() => {
+  const m = d.value?.mandate; if (!m?.stage_position || !o.value) return false
+  return (stagePos.value[o.value.stage_key] ?? 0) >= m.stage_position
+})
+async function saveFee() {
+  if (!o.value) return
+  busy.value = 'fee'
+  try {
+    const r = await api.put<{ mandate: Mandate; scorecard: Detail['scorecard'] }>(`/crm/opportunities/${o.value.id}/mandate-fee`, { fee_pct: feeIn.value })
+    d.value!.mandate = r.mandate; if (r.scorecard) d.value!.scorecard = r.scorecard
+    feeEdit.value = false; feeIn.value = ''
+    toast.success('Taxa do mandato registrada.'); load(true)
+  } catch (e) { toast.error(errorMessage(e)) } finally { busy.value = '' }
+}
 
 // ----- etapa -----
 const activeStages = computed(() => props.stages.filter((s) => s.active).sort((a, b) => a.position - b.position))
@@ -252,6 +271,31 @@ const formalizedIds = computed(() => new Set((d.value?.formalizations ?? []).map
           </dl>
         </section>
 
+        <section v-if="d.mandate?.stage_key" class="box fee" :class="{ need: mandateDue && d.mandate.fee_pct === null }">
+          <div class="row between" style="gap:.5rem;flex-wrap:wrap">
+            <div class="eyebrow">Taxa fechada com o provedor <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:500">· contrato de mandato</span></div>
+            <span v-if="d.mandate.fee_pct !== null" class="badge success"><AppIcon name="lock" :size="12" /> registrada</span>
+          </div>
+          <template v-if="d.mandate.fee_pct !== null && !feeEdit">
+            <div class="row" style="gap:.75rem;align-items:baseline;flex-wrap:wrap">
+              <b class="feev">{{ Number(d.mandate.fee_pct).toLocaleString('pt-BR', { maximumFractionDigits: 3 }) }}%</b>
+              <span class="small muted">{{ d.mandate.fee_by ? `por ${d.mandate.fee_by} · ` : '' }}{{ fmtDateTime(d.mandate.fee_at) }}</span>
+              <button v-if="d.mandate.can_change" class="btn btn-ghost btn-sm" @click="feeEdit = true; feeIn = String(d.mandate.fee_pct).replace('.', ',')">Corrigir (admin)</button>
+            </div>
+          </template>
+          <template v-else-if="d.mandate.can_set || feeEdit">
+            <p class="small" style="margin:0">{{ mandateDue
+              ? `Obrigatória: a oportunidade só avança além de "${d.mandate.stage_name}" com a taxa informada.`
+              : `Informe quando o provedor assinar o contrato de mandato (etapa "${d.mandate.stage_name}"). Depois de salva, só o administrador pode corrigir.` }}</p>
+            <div class="row" style="gap:.5rem;align-items:center">
+              <div class="pct-in"><input v-model="feeIn" class="input" inputmode="decimal" placeholder="Ex.: 5" maxlength="7" @keyup.enter="saveFee"><span>%</span></div>
+              <button class="btn btn-sm" :disabled="busy === 'fee' || !feeIn.trim()" @click="saveFee"><span v-if="busy === 'fee'" class="spinner" /> Salvar taxa</button>
+              <button v-if="feeEdit" class="btn btn-ghost btn-sm" @click="feeEdit = false">Cancelar</button>
+            </div>
+          </template>
+          <p v-else class="small muted" style="margin:0">Ainda não informada. O responsável pela oportunidade registra a taxa na etapa "{{ d.mandate.stage_name }}".</p>
+        </section>
+
         <ScorecardPanel v-if="d.scorecard && (!o.stage?.is_won || d.scorecard.evaluation)" :opp-id="o.id" :data="d.scorecard" :stage-key="o.stage_key" :stage-pos="stagePos"
           :locked="!!o.stage?.is_won || !!o.stage?.is_lost" :is-admin="auth.isAdmin.value" @updated="(v) => { d!.scorecard = v }" />
 
@@ -430,4 +474,9 @@ const formalizedIds = computed(() => new Set((d.value?.formalizations ?? []).map
 .link-btn { background: none; border: 0; padding: 0; color: var(--blue); font: 600 .9rem var(--font-body); cursor: pointer; text-align: left; }
 .link-btn:hover { text-decoration: underline; }
 @media (max-width: 720px) { .ctl { grid-template-columns: 1fr; } }
+.fee { display: grid; gap: .5rem; }
+.fee.need { border-color: #e0a400; background: #fffaf0; }
+.feev { font: 800 1.35rem var(--font-head); color: var(--navy); }
+.pct-in { display: inline-flex; align-items: center; gap: .35rem; }
+.pct-in .input { width: 110px; }
 </style>

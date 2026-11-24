@@ -5,7 +5,7 @@ const route = useRoute()
 watch(() => route.fullPath, () => { menuOpen.value = false })
 const links = computed(() => [
   { to: '/portal', label: 'Início', icon: 'home' },
-  ...(profile.value?.role === 'parceiro' ? [{ to: '/portal/desempenho', label: 'Minhas indicações', icon: 'chart' }, { to: '/portal/comissoes', label: 'Comissões', icon: 'wallet' }] : []),
+  ...(profile.value?.role === 'parceiro' ? [{ to: '/portal/desempenho', label: 'Minhas indicações', icon: 'chart' }, { to: '/portal/comissoes', label: 'Comissões', icon: 'wallet' }, { to: '/portal/regras-comissao', label: 'Como ganhar', icon: 'info' }] : []),
   { to: '/notificacoes', label: 'Notificações', icon: 'bell' },
   { to: '/minha-conta', label: 'Minha conta', icon: 'user' },
 ])
@@ -46,11 +46,11 @@ const links = computed(() => [
 <style scoped>
 .portal { min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); }
 .top { background: var(--navy); color: #fff; position: sticky; top: 0; z-index: 50; box-shadow: 0 2px 10px rgba(8,29,66,.25); }
-.inner { max-width: 1180px; margin: 0 auto; padding: 0 1.25rem; height: var(--topbar-h); display: flex; align-items: center; gap: 1.5rem; }
+.inner { max-width: 1360px; margin: 0 auto; padding: 0 1.25rem; height: var(--topbar-h); display: flex; align-items: center; gap: 1rem; }
 .logo { display: inline-flex; align-items: center; gap: .75rem; text-decoration: none; flex: none; }
 .logo .sep { width: 1px; height: 22px; background: rgba(255,255,255,.25); }
 .nav { display: flex; gap: .25rem; flex: 1; }
-.nav-link { display: inline-flex; align-items: center; gap: .45rem; padding: .5rem .8rem; border-radius: var(--radius); color: #C9D3F0; font: 500 .9rem var(--font-body); background: none; border: 0; cursor: pointer; text-decoration: none; white-space: nowrap; }
+.nav-link { display: inline-flex; align-items: center; gap: .45rem; padding: .5rem .65rem; border-radius: var(--radius); color: #C9D3F0; font: 500 .9rem var(--font-body); background: none; border: 0; cursor: pointer; text-decoration: none; white-space: nowrap; }
 .nav-link:hover { color: #fff; background: rgba(255,255,255,.08); text-decoration: none; }
 .nav-link.active { color: #fff; background: rgba(255,255,255,.12); }
 .right { display: flex; align-items: center; gap: .75rem; margin-left: auto; }
@@ -60,9 +60,10 @@ const links = computed(() => [
 .who-txt strong { font-size: .88rem; }
 .who-txt small { font-size: .74rem; color: #9FB0E8; }
 .burger { display: none; color: #fff; }
+@media (max-width: 1360px) { .who-txt { display: none; } }
 .content { flex: 1; width: 100%; max-width: 1180px; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
 .foot { display: flex; gap: 1rem; align-items: center; justify-content: center; flex-wrap: wrap; padding: 1.25rem; font-size: .78rem; color: var(--muted); border-top: 1px solid var(--line); background: #fff; }
-@media (max-width: 820px) {
+@media (max-width: 1080px) {
   .burger { display: inline-grid; }
   .burger:hover { background: rgba(255,255,255,.12); }
   .who-txt { display: none; }
