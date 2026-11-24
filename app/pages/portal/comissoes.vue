@@ -22,7 +22,7 @@ function closeC() { openId.value = null; router.replace({ query: {} }) }
   <div>
     <div class="page-head">
       <div><div class="eyebrow">Portal do parceiro</div><h1>Comissões</h1>
-        <p>As comissões são geradas quando a aquisição de um provedor indicado por você é concluída e passam por aprovação antes do pagamento.</p></div>
+        <p>As comissões aparecem aqui quando são liberadas, no fim da negociação de um provedor indicado por você, e passam por aprovação antes do pagamento.</p></div>
     </div>
     <div v-if="loading" class="empty"><span class="spinner" /></div>
     <template v-else-if="summary">
@@ -33,7 +33,7 @@ function closeC() { openId.value = null; router.replace({ query: {} }) }
       </div>
       <div v-if="!items.length" class="card empty">
         <AppIcon name="wallet" :size="36" />
-        <p>Você ainda não tem comissões. Elas aparecem aqui quando um provedor indicado pelo seu código conclui a aquisição.</p>
+        <p>Você ainda não tem comissões. Elas aparecem aqui quando a comissão de um provedor indicado pelo seu código é liberada.</p>
         <NuxtLink to="/portal/desempenho" class="btn btn-outline btn-sm">Ver minhas indicações</NuxtLink>
       </div>
       <div v-else class="list">

@@ -91,7 +91,7 @@ export interface CommissionItem {
 }
 export interface ForecastItem {
   opportunity_id: string; opp_name: string; stage: string; trigger: string; rule_id: string; rule_name: string
-  beneficiary_id: string; beneficiary_name: string; beneficiary_type: string; base_value: number | null; estimated: boolean; amount: number | null
+  beneficiary_id: string; beneficiary_name: string; beneficiary_type: string; base_value: number | null; estimated: boolean; amount: number | null; pct_estimated?: boolean
 }
 export interface CommissionSummary {
   gerada: { n: number; total: number }; aprovada: { n: number; total: number }; paga: { n: number; total: number }; cancelada: { n: number; total: number }
@@ -101,7 +101,9 @@ export interface CommissionRule {
   id: string; name: string; beneficiary_type: string; source: string; role: string | null; trigger_stage: string; base: string
   percent: number | null; fixed_amount: number | null; max_amount: number | null; payment_days: number; payment_terms: string | null
   valid_from: string | null; valid_to: string | null; active: boolean; commissions: number; trigger: { name: string } | null; referral_origin: string
+  percent_mode?: 'fixed' | 'scorecard'
 }
+export interface ScoreBand { id?: string; min_points: number; max_points: number; percent: number; label: string; description: string | null }
 export interface CommissionPayment {
   id: string; amount: number; paid_at: string; method: string; reference: string | null; notes?: string | null; created_at: string
   author?: { full_name: string } | null

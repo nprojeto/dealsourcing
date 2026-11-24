@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CommissionItem, CommissionPayment, CommissionRule, CommissionSummary, ForecastItem, Stage } from '~/utils/simulator'
+import type { CommissionItem, CommissionPayment, CommissionRule, CommissionSummary, ForecastItem, ScoreBand, Stage } from '~/utils/simulator'
 definePageMeta({ layout: 'crm', roles: ['admin', 'gestor_comercial', 'colaborador'] })
 useHead({ title: 'Comissões · DealSourcing' })
 
@@ -61,17 +61,37 @@ async function loadRules() {
 const stageNum = computed(() => stageNumbers(stages.value))
 const triggerStages = computed(() => stages.value.filter((s) => s.active && !s.is_lost).sort((a, b) => a.position - b.position))
 const blank = () => ({ id: '', name: '', beneficiary_type: 'external', source: 'referral', referral_origin: 'any', role: '', trigger_stage: 'aquisicao_concluida', base: 'deal_value',
+  percent_mode: 'fixed' as 'fixed' | 'scorecard',
   percent: '' as string | number, fixed_amount: null as number | null, max_amount: null as number | null, payment_days: 30 as number | string, payment_terms: '', valid_from: '', valid_to: '', active: true })
 const rf = reactive({ open: false, busy: false, errors: {} as Record<string, string>, data: blank() })
 function editRule(r?: CommissionRule) {
   rf.errors = {}
   rf.data = r ? { id: r.id, name: r.name, beneficiary_type: r.beneficiary_type, source: r.source, referral_origin: r.referral_origin ?? 'any', role: r.role ?? '', trigger_stage: r.trigger_stage, base: r.base,
-    percent: r.percent ?? '', fixed_amount: r.fixed_amount === null ? null : Number(r.fixed_amount), max_amount: r.max_amount === null ? null : Number(r.max_amount),
+    percent_mode: r.percent_mode ?? 'fixed', percent: r.percent ?? '', fixed_amount: r.fixed_amount === null ? null : Number(r.fixed_amount), max_amount: r.max_amount === null ? null : Number(r.max_amount),
     payment_days: r.payment_days, payment_terms: r.payment_terms ?? '', valid_from: r.valid_from ?? '', valid_to: r.valid_to ?? '', active: r.active } : blank()
   rf.open = true
 }
 watch(() => rf.data.beneficiary_type, (v) => { if (v === 'external') { rf.data.source = 'referral'; rf.data.role = '' } })
 watch(() => rf.data.source, (v) => { if (v === 'referral') rf.data.referral_origin = 'any' })
+watch(() => rf.data.percent_mode, (v) => { if (v === 'scorecard') { rf.data.beneficiary_type = 'external'; rf.data.source = 'referral'; rf.data.percent = '' } })
+
+// ----- faixas da avaliação do indicador -----
+const bands = ref<ScoreBand[]>([])
+const bf = reactive({ open: false, busy: false, error: '', rows: [] as { max_points: number | string; percent: number | string; label: string; description: string }[] })
+async function loadBands() { try { bands.value = (await api.get<{ bands: ScoreBand[] }>('/admin/scorecard-bands')).bands } catch { bands.value = [] } }
+function editBands() {
+  bf.error = ''; bf.rows = bands.value.map((b) => ({ max_points: Number(b.max_points), percent: Number(b.percent), label: b.label, description: b.description ?? '' })); bf.open = true
+}
+async function saveBands() {
+  bf.busy = true; bf.error = ''
+  try {
+    const r = await api.put<{ bands: ScoreBand[] }>('/admin/scorecard-bands', { bands: bf.rows.map((x) => ({ ...x, max_points: Number(x.max_points), percent: Number(x.percent) })) })
+    bands.value = r.bands; bf.open = false; toast.success('Faixas atualizadas. Valem para as próximas comissões.')
+  } catch (e) { bf.error = errorMessage(e) } finally { bf.busy = false }
+}
+const bandRange = (b: ScoreBand, i: number) => i === 0 ? `0 a ${fmtPts(b.max_points)}` : `acima de ${fmtPts(b.min_points)} até ${fmtPts(b.max_points)}`
+const fmtPts = (n: number) => Number(n).toLocaleString('pt-BR', { maximumFractionDigits: 1 })
+onMounted(() => { if (auth.isManager.value) loadBands() })
 async function saveRule() {
   rf.busy = true; rf.errors = {}
   const { id, ...d } = rf.data
@@ -88,8 +108,9 @@ async function toggleRule(r: CommissionRule) {
   try { await api.put(`/admin/commission-rules/${r.id}`, { active: !r.active }); toast.success(r.active ? 'Regra desativada.' : 'Regra ativada.'); await Promise.all([loadRules(), load()]) }
   catch (e) { toast.error(errorMessage(e)) }
 }
-function ruleCalc(r: { percent: number | null; fixed_amount: number | null; max_amount: number | null }) {
+function ruleCalc(r: { percent: number | null; fixed_amount: number | null; max_amount: number | null; percent_mode?: string }) {
   const p: string[] = []
+  if (r.percent_mode === 'scorecard') p.push(bands.value.length ? `${Number(bands.value[0].percent).toLocaleString('pt-BR')}% a ${Number(bands.value.at(-1)!.percent).toLocaleString('pt-BR')}% pela avaliação do indicador` : 'Pela avaliação do indicador')
   if (r.percent) p.push(`${Number(r.percent).toLocaleString('pt-BR')}%`)
   if (r.fixed_amount) p.push(`${p.length ? '+ ' : ''}${fmtBRL(Number(r.fixed_amount))}`)
   const calc = p.join(' ')
@@ -190,7 +211,7 @@ function card(status: string) { tab.value = 'comissoes'; f.status = f.status ===
               <td class="small">{{ x.rule_name }}</td>
               <td class="small">{{ x.trigger }}</td>
               <td v-if="auth.isManager.value" class="r nowrap">{{ x.base_value === null ? '—' : fmtBRLShort(x.base_value) }}<div v-if="x.estimated" class="small muted">estimativa</div></td>
-              <td class="r nowrap"><strong class="money">{{ x.amount === null ? '—' : fmtBRL(x.amount) }}</strong></td>
+              <td class="r nowrap"><strong class="money">{{ x.amount === null ? '—' : fmtBRL(x.amount) }}</strong><div v-if="x.pct_estimated" class="small muted">avaliação pendente</div></td>
             </tr>
           </tbody>
           <tfoot v-if="forecast.length"><tr><td :colspan="auth.isManager.value ? 6 : 5" class="r small muted">Total previsto</td><td class="r nowrap"><strong>{{ fmtBRL(forecastTotal) }}</strong></td></tr></tfoot>
@@ -251,7 +272,7 @@ function card(status: string) { tab.value = 'comissoes'; f.status = f.status ===
             <template v-if="r.source === 'assignee'"><dt>Vale para</dt><dd>{{ REFERRAL_ORIGIN_LABEL[r.referral_origin] }}</dd></template>
             <dt>Gera em</dt><dd>{{ r.trigger?.name ?? r.trigger_stage }}</dd>
             <dt>Base</dt><dd>{{ COMMISSION_BASE_LABEL[r.base] }}</dd>
-            <dt>Pagamento</dt><dd>até {{ r.payment_days }} dias após a aprovação</dd>
+            <dt>Pagamento</dt><dd>{{ r.payment_days ? `até ${r.payment_days} dias após a aprovação` : 'no mesmo dia (assinatura)' }}</dd>
             <template v-if="r.valid_from || r.valid_to"><dt>Vigência</dt><dd>{{ r.valid_from ? fmtDay(r.valid_from) : 'início' }} a {{ r.valid_to ? fmtDay(r.valid_to) : 'sem fim' }}</dd></template>
             <dt>Uso</dt><dd>{{ r.commissions }} comissão(ões)</dd>
           </dl>
@@ -261,6 +282,34 @@ function card(status: string) { tab.value = 'comissoes'; f.status = f.status ===
           </div>
         </article>
       </div>
+      <section v-if="bands.length" class="card bands">
+        <div class="row between">
+          <div><h3 style="margin:0">Faixas da avaliação do indicador</h3>
+            <p class="small muted" style="margin:.2rem 0 0">Parceiro externo: a soma dos pontos (0 a 100) nos 6 critérios da avaliação define o percentual. Só admin e gestão veem.</p></div>
+          <button v-if="canManage" class="btn btn-outline btn-sm" @click="editBands"><AppIcon name="edit" :size="16" /> Editar faixas</button>
+        </div>
+        <div class="table-wrap" style="margin-top:.8rem">
+          <table class="table"><thead><tr><th>Pontos</th><th>Faixa</th><th class="r">Comissão</th><th>Quando se aplica</th></tr></thead>
+            <tbody><tr v-for="(b, i) in bands" :key="b.id ?? i"><td class="nowrap">{{ bandRange(b, i) }}</td><td class="t-strong">{{ b.label }}</td>
+              <td class="r t-strong">{{ Number(b.percent).toLocaleString('pt-BR') }}%</td><td class="small muted">{{ b.description }}</td></tr></tbody></table>
+        </div>
+      </section>
+      <AppModal :open="bf.open" title="Faixas da avaliação do indicador" :width="760" @close="bf.open = false">
+        <p class="small muted" style="margin-top:0">Cada faixa vai do limite da anterior até o limite informado. A última termina em 100.</p>
+        <div v-for="(x, i) in bf.rows" :key="i" class="band-row">
+          <label class="field"><span class="small">Até (pontos)</span><input v-model="x.max_points" class="input" type="number" min="1" max="100" step="0.5"></label>
+          <label class="field"><span class="small">Comissão (%)</span><input v-model="x.percent" class="input" type="number" min="0.01" max="100" step="0.05"></label>
+          <label class="field"><span class="small">Nome da faixa</span><input v-model="x.label" class="input"></label>
+          <button class="icon-btn" :disabled="bf.rows.length <= 1" aria-label="Remover faixa" @click="bf.rows.splice(i, 1)"><AppIcon name="x" :size="16" /></button>
+          <label class="field full"><input v-model="x.description" class="input" placeholder="Quando se aplica (opcional)"></label>
+        </div>
+        <button class="btn btn-ghost btn-sm" @click="bf.rows.push({ max_points: 100, percent: '', label: '', description: '' })"><AppIcon name="plus" :size="16" /> Adicionar faixa</button>
+        <p v-if="bf.error" class="error">{{ bf.error }}</p>
+        <template #footer>
+          <button class="btn btn-ghost" :disabled="bf.busy" @click="bf.open = false">Cancelar</button>
+          <button class="btn" :disabled="bf.busy" @click="saveBands"><span v-if="bf.busy" class="spinner" /> Salvar faixas</button>
+        </template>
+      </AppModal>
     </template>
 
     <CommissionDrawer :id="openId" @close="closeC" @changed="load(); loadPays()" />
@@ -287,12 +336,16 @@ function card(status: string) { tab.value = 'comissoes'; f.status = f.status ===
           <span v-if="rf.errors.trigger_stage" class="err">{{ rf.errors.trigger_stage }}</span></div>
         <div class="field"><label for="rbase">Base de cálculo</label>
           <select id="rbase" v-model="rf.data.base" class="select"><option v-for="(l, k) in COMMISSION_BASE_LABEL" :key="k" :value="k">{{ l }}</option></select></div>
-        <div class="field"><label for="rpct">Percentual (%)</label><input id="rpct" v-model="rf.data.percent" class="input" type="number" min="0" max="100" step="0.01" placeholder="Ex.: 2">
+        <div class="field"><label for="rpm">Tipo de percentual</label>
+          <select id="rpm" v-model="rf.data.percent_mode" class="select"><option value="fixed">Percentual fixo</option><option value="scorecard">Pela avaliação do indicador (parceiro externo)</option></select>
+          <span v-if="rf.errors.percent_mode" class="err">{{ rf.errors.percent_mode }}</span>
+          <span v-else-if="rf.data.percent_mode === 'scorecard'" class="hint">O percentual sai das faixas de pontuação. A venda só avança para esta etapa com a avaliação completa.</span></div>
+        <div v-if="rf.data.percent_mode === 'fixed'" class="field"><label for="rpct">Percentual (%)</label><input id="rpct" v-model="rf.data.percent" class="input" type="number" min="0" max="100" step="0.01" placeholder="Ex.: 2">
           <span v-if="rf.errors.percent" class="err">{{ rf.errors.percent }}</span></div>
         <div class="field"><label for="rfix">Valor fixo</label><MoneyInput id="rfix" v-model="rf.data.fixed_amount" /><span class="hint">Somado ao percentual.</span></div>
         <div class="field"><label for="rmax">Teto por comissão</label><MoneyInput id="rmax" v-model="rf.data.max_amount" placeholder="Sem teto" /></div>
         <div class="field"><label for="rdays">Prazo de pagamento (dias)</label><input id="rdays" v-model="rf.data.payment_days" class="input" type="number" min="0" max="365">
-          <span v-if="rf.errors.payment_days" class="err">{{ rf.errors.payment_days }}</span><span v-else class="hint">Contado a partir da aprovação.</span></div>
+          <span v-if="rf.errors.payment_days" class="err">{{ rf.errors.payment_days }}</span><span v-else class="hint">Contado a partir da geração. 0 = no mesmo dia.</span></div>
         <div class="field"><label for="rvf">Vigência: início</label><input id="rvf" v-model="rf.data.valid_from" class="input" type="date"></div>
         <div class="field"><label for="rvt">Vigência: fim</label><input id="rvt" v-model="rf.data.valid_to" class="input" type="date"></div>
         <div class="field full"><label for="rterm">Condições de pagamento</label><textarea id="rterm" v-model="rf.data.payment_terms" class="textarea" rows="2" style="min-height:60px" placeholder="Visível ao beneficiário. Ex.: Pagamento após assinatura do contrato e emissão de nota fiscal." /></div>
@@ -307,6 +360,10 @@ function card(status: string) { tab.value = 'comissoes'; f.status = f.status ===
 </template>
 
 <style scoped>
+.bands { margin-top: 1.2rem; padding: 1.2rem 1.3rem; }
+.band-row { display: grid; grid-template-columns: 110px 120px 1fr 36px; gap: .2rem .6rem; align-items: end; padding: .6rem 0; border-bottom: 1px solid var(--line); }
+.band-row .full { grid-column: 1 / -1; }
+@media (max-width: 600px) { .band-row { grid-template-columns: 1fr 1fr; } }
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
 .kpis .kpi { text-align: left; border: 1px solid var(--line); cursor: pointer; font: inherit; display: flex; flex-direction: column; justify-content: flex-start; }
 .kpis .kpi.sel { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue-100); }

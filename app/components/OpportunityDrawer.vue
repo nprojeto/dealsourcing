@@ -9,7 +9,7 @@ interface Detail {
   opportunity: OppItem; isp: Record<string, unknown> & { owner?: { full_name: string; email: string; phone: string | null } | null } | null
   simulations: Sim[]; formalizations: { id: string; simulation_id: string; formalized_at: string }[]
   activities: Activity[]; attachments: Attachment[]; contact_stats: { total: number; unanswered: number }
-  can_edit: boolean; can_assign: boolean; commissions: OppCommission[]
+  can_edit: boolean; can_assign: boolean; commissions: OppCommission[]; scorecard?: import('./ScorecardPanel.vue').Scorecard | null
 }
 
 const props = defineProps<{ id: string | null; stages: Stage[]; assignees: Assignee[] }>()
@@ -48,6 +48,7 @@ async function refresh() { await load(true); emit('changed') }
 // ----- etapa -----
 const activeStages = computed(() => props.stages.filter((s) => s.active).sort((a, b) => a.position - b.position))
 const stageNum = computed(() => stageNumbers(props.stages))
+const stagePos = computed(() => Object.fromEntries(props.stages.map((s) => [s.key, s.position])) as Record<string, number>)
 const move = reactive({ to: '', note: '', open: false, deal: null as number | null })
 const target = computed(() => props.stages.find((s) => s.key === move.to))
 function askMove(key: string) {
@@ -250,6 +251,9 @@ const formalizedIds = computed(() => new Set((d.value?.formalizations ?? []).map
             <dt>Enviado em</dt><dd>{{ fmtDateTime(amap.sent_at) }}</dd>
           </dl>
         </section>
+
+        <ScorecardPanel v-if="d.scorecard && (!o.stage?.is_won || d.scorecard.evaluation)" :opp-id="o.id" :data="d.scorecard" :stage-key="o.stage_key" :stage-pos="stagePos"
+          :locked="!!o.stage?.is_won || !!o.stage?.is_lost" :is-admin="auth.isAdmin.value" @updated="(v) => { d!.scorecard = v }" />
 
         <section v-if="d.can_assign" class="box stack">
           <div class="eyebrow">Negócio e comissões</div>
